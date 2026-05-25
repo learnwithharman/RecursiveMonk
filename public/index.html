@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>UNO</title>
+</head>
+<body>
+
+<h1>Recursive Monk UNO</h1>
+
+<button onclick="playCard()">Play Card</button>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+const socket = io();
+
+function playCard() {
+  socket.emit("play-card", "Red 5");
+}
+
+socket.on("card-played", (card) => {
+  console.log("Played:", card);
+});
+</script>
+
+</body>
+</html>
