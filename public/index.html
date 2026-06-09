@@ -1,27 +1,47 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>UNO</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recursive Monk UNO</title>
+  <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 
-<h1>Recursive Monk UNO</h1>
+<div class="container">
+  <h1>Recursive Monk UNO</h1>
+  <p class="subtitle">Multiplayer card game in your browser</p>
 
-<button onclick="playCard()">Play Card</button>
+  <!-- Home: create or join -->
+  <div id="home-screen">
+    <div id="error-box" class="error-msg hidden"></div>
+
+    <div class="card">
+      <label for="player-name">Your name</label>
+      <input id="player-name" type="text" placeholder="Enter your name" maxlength="20">
+
+      <button class="btn btn-primary" id="btn-create">Create Room</button>
+      <p class="divider">— or —</p>
+      <label for="room-code-input">Room code</label>
+      <input id="room-code-input" type="text" placeholder="ABC123" maxlength="6" style="text-transform:uppercase">
+      <button class="btn btn-secondary" id="btn-join">Join Room</button>
+    </div>
+  </div>
+
+  <!-- Lobby: waiting for players -->
+  <div id="lobby-screen" class="hidden">
+    <div class="card">
+      <p class="waiting-msg">Share this code with friends</p>
+      <div class="room-code" id="room-code-display">------</div>
+
+      <ul class="player-list" id="player-list"></ul>
+      <p class="waiting-msg" id="player-count">1 / 10 players</p>
+    </div>
+    <button class="btn btn-secondary" id="btn-leave">Leave Room</button>
+  </div>
+</div>
 
 <script src="/socket.io/socket.io.js"></script>
-
-<script>
-const socket = io();
-
-function playCard() {
-  socket.emit("play-card", "Red 5");
-}
-
-socket.on("card-played", (card) => {
-  console.log("Played:", card);
-});
-</script>
-
+<script src="/js/lobby.js"></script>
 </body>
 </html>
