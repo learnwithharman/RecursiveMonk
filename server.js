@@ -8,6 +8,7 @@ const {
   getRoomByPlayer,
   getPublicRoom,
 } = require("./server/rooms");
+const { startGame, getPublicGameState, getPlayerHand } = require("./server/game");
 
 const app = express();
 const server = http.createServer(app);
@@ -49,6 +50,28 @@ io.on("connection", (socket) => {
 
     socket.leave(room.code);
     broadcastRoom(room);
+  });
+
+  socket.on("start-game", () => {
+    const room = getRoomByPlayer(socket.id);
+    if (!room) return;
+    if (room.hostId !== socket.id) {
+      socket.emit("room-error", "Only the host can start the game");
+      return;
+    }
+    if (room.players.length < 2) {
+      socket.emit("room-error", "Need at least 2 players to start");
+      return;
+    }
+    if (room.status !== "waiting") return;
+
+    startGame(room);
+
+    room.players.forEach((player) => {
+      io.to(player.id).emit("your-hand", getPlayerHand(room, player.id));
+    });
+
+    io.to(room.code).emit("game-started", getPublicGameState(room));
   });
 
   socket.on("disconnect", () => {

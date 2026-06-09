@@ -147,3 +147,51 @@ input:focus {
   margin-bottom: 1rem;
   font-size: 0.85rem;
 }
+
+.table-center {
+  text-align: center;
+  margin: 1.25rem 0;
+}
+
+.turn-label {
+  color: #888;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.uno-card {
+  width: 70px;
+  height: 100px;
+  border-radius: 8px;
+  background: #fff;
+  color: #111;
+  font-weight: 700;
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0.25rem;
+  text-transform: capitalize;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.uno-card.red { background: #e63946; color: #fff; }
+.uno-card.yellow { background: #ffd166; color: #111; }
+.uno-card.green { background: #06d6a0; color: #111; }
+.uno-card.blue { background: #118ab2; color: #fff; }
+.uno-card.wild { background: #333; color: #fff; }
+
+.hand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.hand .uno-card {
+  width: 56px;
+  height: 80px;
+  font-size: 0.65rem;
+  cursor: default;
+}

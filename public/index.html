@@ -36,8 +36,26 @@
 
       <ul class="player-list" id="player-list"></ul>
       <p class="waiting-msg" id="player-count">1 / 10 players</p>
+      <button class="btn btn-primary hidden" id="btn-start">Start Game</button>
     </div>
     <button class="btn btn-secondary" id="btn-leave">Leave Room</button>
+  </div>
+
+  <!-- Game: basic table view -->
+  <div id="game-screen" class="hidden">
+    <div class="card">
+      <p class="waiting-msg">Room <span id="game-room-code"></span></p>
+      <div class="table-center">
+        <p class="turn-label">Top card</p>
+        <div class="uno-card" id="top-card">?</div>
+        <p class="turn-label" id="turn-info">Waiting...</p>
+      </div>
+      <ul class="player-list" id="game-player-list"></ul>
+    </div>
+    <div class="card">
+      <p class="waiting-msg">Your hand</p>
+      <div class="hand" id="my-hand"></div>
+    </div>
   </div>
 </div>
 
