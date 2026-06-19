@@ -41,7 +41,8 @@ function formatCard(card) {
 
 function renderCardEl(card) {
   const el = document.createElement("div");
-  el.className = `uno-card ${card.color}`;
+  const cardColor = card.activeColor || card.color;
+  el.className = `uno-card ${cardColor}`;
   el.textContent = card.color === "wild" ? formatCard(card) : `${card.color.slice(0, 1).toUpperCase()} ${formatCard(card)}`;
   return el;
 }
@@ -82,7 +83,8 @@ function renderGame(gameState, hand) {
   document.getElementById("game-room-code").textContent = gameState.code;
 
   const topCardEl = document.getElementById("top-card");
-  topCardEl.className = `uno-card ${gameState.topCard.color}`;
+  const topCardColor = gameState.topCard.activeColor || gameState.topCard.color;
+  topCardEl.className = `uno-card ${topCardColor}`;
   topCardEl.textContent = formatCard(gameState.topCard);
 
   const isMyTurn = gameState.currentPlayerId === mySocketId;
@@ -106,8 +108,12 @@ function renderGame(gameState, hand) {
 
   const myHandEl = document.getElementById("my-hand");
   myHandEl.innerHTML = "";
-  hand.forEach((card) => {
-    myHandEl.appendChild(renderCardEl(card));
+  hand.forEach((card, index) => {
+    const cardEl = renderCardEl(card);
+    cardEl.addEventListener("click", () => {
+      socket.emit("play-card", { cardIndex: index });
+    });
+    myHandEl.appendChild(cardEl);
   });
 }
 
@@ -145,21 +151,25 @@ socket.on("room-updated", renderLobby);
 socket.on("room-error", showError);
 
 let myHand = [];
-let pendingGameState = null;
+let latestGameState = null;
 
-function tryRenderGame() {
-  if (pendingGameState && myHand.length > 0) {
-    renderGame(pendingGameState, myHand);
-    pendingGameState = null;
+function render() {
+  if (latestGameState) {
+    renderGame(latestGameState, myHand);
   }
 }
 
 socket.on("your-hand", (hand) => {
   myHand = hand;
-  tryRenderGame();
+  render();
 });
 
 socket.on("game-started", (gameState) => {
-  pendingGameState = gameState;
-  tryRenderGame();
+  latestGameState = gameState;
+  render();
+});
+
+socket.on("game-updated", (gameState) => {
+  latestGameState = gameState;
+  render();
 });

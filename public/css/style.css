@@ -193,5 +193,5 @@ input:focus {
   width: 56px;
   height: 80px;
   font-size: 0.65rem;
-  cursor: default;
+  cursor: pointer;
 }

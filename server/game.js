@@ -96,8 +96,46 @@ function getPlayerHand(room, socketId) {
   return room.game.hands[socketId] || [];
 }
 
+function playCard(room, playerId, cardIndex) {
+  if (room.status !== "playing") return { error: "Game not active" };
+
+  const hand = room.game.hands[playerId];
+  if (!hand || cardIndex < 0 || cardIndex >= hand.length) {
+    return { error: "Invalid card selection" };
+  }
+
+  const card = hand[cardIndex];
+  const topCard = room.game.discardPile[room.game.discardPile.length - 1];
+
+  const isColorMatch = (topCard.activeColor && card.color === topCard.activeColor) || 
+                       (!topCard.activeColor && card.color === topCard.color);
+  const isValueMatch = card.value === topCard.value;
+  const isWild = card.color === "wild";
+
+  if (!isColorMatch && !isValueMatch && !isWild) {
+    return { error: "Card does not match top card color or value" };
+  }
+
+  // Remove card from hand
+  hand.splice(cardIndex, 1);
+
+  // For wild cards, set a default activeColor (e.g. red) until color picking is implemented
+  if (isWild) {
+    card.activeColor = "red";
+  } else {
+    // Clear any previous activeColor if it's a normal card
+    delete card.activeColor;
+  }
+
+  room.game.discardPile.push(card);
+
+  return { success: true, card };
+}
+
 module.exports = {
   startGame,
   getPublicGameState,
   getPlayerHand,
+  playCard,
 };
+
