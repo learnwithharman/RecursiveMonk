@@ -17,15 +17,16 @@ Personal build plan. One small chunk at a time, ship something playable early.
 
 ---
 
-## Phase 2 — Core Gameplay *(next up)*
+## Phase 2 — Core Gameplay *(in progress)*
 
 | Task | Status |
 |------|--------|
-| Play a card (valid move check) | ⬜ |
-| Draw card when no valid play | ⬜ |
-| Turn rotation (Skip, Reverse) | ⬜ |
-| Draw Two (+2 cards) | ⬜ |
-| Reshuffle draw pile when empty | ⬜ |
+| Play a card (valid move check) | ✅ Done |
+| Draw card & auto-pass turn | ✅ Done |
+| Turn rotation (basic) | ✅ Done |
+| Turn rotation (Skip, Reverse effects) | ⬜ Next Session |
+| Draw Two (+2 card effect) | ⬜ Next Session |
+| Reshuffle draw pile when empty | ✅ Done |
 
 ---
 
@@ -62,8 +63,8 @@ Personal build plan. One small chunk at a time, ship something playable early.
 
 ## What I built today
 
-1. **Room system** — server-side create/join/leave with 6-char codes  
-2. **Lobby UI** — name input, room code, live player list  
-3. **Game start** — host deals cards, everyone sees their hand + top card + whose turn  
+1. **Card Playing Logic** — played cards are validated (color/value match) and placed on discard pile.
+2. **Turn Rotation** — restricted plays to the active player and advanced turns.
+3. **Drawing Cards** — allowed players to draw from the deck, automatically passing the turn, and reshuffling discard pile if empty.
 
-Next session: actually **play** a card and rotate turns.
+Next session: Special action card effects (Skip, Reverse, Draw Two).
