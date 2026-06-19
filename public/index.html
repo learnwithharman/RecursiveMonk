@@ -46,8 +46,16 @@
     <div class="card">
       <p class="waiting-msg">Room <span id="game-room-code"></span></p>
       <div class="table-center">
-        <p class="turn-label">Top card</p>
-        <div class="uno-card" id="top-card">?</div>
+        <div style="display: flex; gap: 1rem; justify-content: center; align-items: center; margin: 1rem 0;">
+          <div>
+            <p class="turn-label">Draw Pile</p>
+            <div class="uno-card wild" id="draw-pile" style="cursor: pointer; display: flex; align-items: center; justify-content: center;">UNO</div>
+          </div>
+          <div>
+            <p class="turn-label">Discard Pile</p>
+            <div class="uno-card" id="top-card">?</div>
+          </div>
+        </div>
         <p class="turn-label" id="turn-info">Waiting...</p>
       </div>
       <ul class="player-list" id="game-player-list"></ul>

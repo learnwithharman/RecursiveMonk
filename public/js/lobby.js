@@ -92,6 +92,15 @@ function renderGame(gameState, hand) {
     ? "Your turn!"
     : `${gameState.currentPlayerName}'s turn`;
 
+  const drawPileEl = document.getElementById("draw-pile");
+  if (isMyTurn) {
+    drawPileEl.style.opacity = "1";
+    drawPileEl.style.cursor = "pointer";
+  } else {
+    drawPileEl.style.opacity = "0.6";
+    drawPileEl.style.cursor = "not-allowed";
+  }
+
   const gamePlayerList = document.getElementById("game-player-list");
   gamePlayerList.innerHTML = "";
   gameState.players.forEach((player) => {
@@ -177,4 +186,10 @@ socket.on("game-started", (gameState) => {
 socket.on("game-updated", (gameState) => {
   latestGameState = gameState;
   render();
+});
+
+document.getElementById("draw-pile").addEventListener("click", () => {
+  if (latestGameState && latestGameState.currentPlayerId === mySocketId) {
+    socket.emit("draw-card");
+  }
 });

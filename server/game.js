@@ -142,10 +142,47 @@ function playCard(room, playerId, cardIndex) {
   return { success: true, card };
 }
 
+function drawCard(room, playerId) {
+  if (room.status !== "playing") return { error: "Game not active" };
+
+  const activePlayer = room.players[room.game.currentTurn];
+  if (activePlayer.id !== playerId) {
+    return { error: "It is not your turn" };
+  }
+
+  // Reshuffle discard pile if draw pile is empty
+  if (room.game.drawPile.length === 0) {
+    const discardPile = room.game.discardPile;
+    if (discardPile.length <= 1) {
+      return { error: "No cards left in the deck to draw" };
+    }
+
+    const topCard = discardPile.pop();
+    const rest = discardPile.splice(0, discardPile.length);
+
+    rest.forEach((c) => {
+      delete c.activeColor;
+    });
+
+    room.game.drawPile = shuffle(rest);
+    room.game.discardPile = [topCard];
+  }
+
+  const card = room.game.drawPile.pop();
+  room.game.hands[playerId].push(card);
+
+  // Auto-advance turn to the next player after drawing
+  const playerCount = room.players.length;
+  room.game.currentTurn = (room.game.currentTurn + room.game.direction + playerCount) % playerCount;
+
+  return { success: true, card };
+}
+
 module.exports = {
   startGame,
   getPublicGameState,
   getPlayerHand,
   playCard,
+  drawCard,
 };
 

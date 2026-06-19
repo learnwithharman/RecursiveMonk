@@ -8,7 +8,7 @@ const {
   getRoomByPlayer,
   getPublicRoom,
 } = require("./server/rooms");
-const { startGame, getPublicGameState, getPlayerHand, playCard } = require("./server/game");
+const { startGame, getPublicGameState, getPlayerHand, playCard, drawCard } = require("./server/game");
 
 const app = express();
 const server = http.createServer(app);
@@ -85,6 +85,23 @@ io.on("connection", (socket) => {
     }
 
     // Send updated hand to each player and update public game state
+    room.players.forEach((player) => {
+      io.to(player.id).emit("your-hand", getPlayerHand(room, player.id));
+    });
+    io.to(room.code).emit("game-updated", getPublicGameState(room));
+  });
+
+  socket.on("draw-card", () => {
+    const room = getRoomByPlayer(socket.id);
+    if (!room) return;
+
+    const result = drawCard(room, socket.id);
+    if (result.error) {
+      socket.emit("room-error", result.error);
+      return;
+    }
+
+    // Broadcast updated player hands and public game state
     room.players.forEach((player) => {
       io.to(player.id).emit("your-hand", getPlayerHand(room, player.id));
     });
