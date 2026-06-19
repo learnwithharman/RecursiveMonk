@@ -110,9 +110,14 @@ function renderGame(gameState, hand) {
   myHandEl.innerHTML = "";
   hand.forEach((card, index) => {
     const cardEl = renderCardEl(card);
-    cardEl.addEventListener("click", () => {
-      socket.emit("play-card", { cardIndex: index });
-    });
+    if (isMyTurn) {
+      cardEl.addEventListener("click", () => {
+        socket.emit("play-card", { cardIndex: index });
+      });
+    } else {
+      cardEl.style.opacity = "0.6";
+      cardEl.style.cursor = "not-allowed";
+    }
     myHandEl.appendChild(cardEl);
   });
 }

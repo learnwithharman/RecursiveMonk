@@ -99,6 +99,12 @@ function getPlayerHand(room, socketId) {
 function playCard(room, playerId, cardIndex) {
   if (room.status !== "playing") return { error: "Game not active" };
 
+  // Verify it is this player's turn
+  const activePlayer = room.players[room.game.currentTurn];
+  if (activePlayer.id !== playerId) {
+    return { error: "It is not your turn" };
+  }
+
   const hand = room.game.hands[playerId];
   if (!hand || cardIndex < 0 || cardIndex >= hand.length) {
     return { error: "Invalid card selection" };
@@ -128,6 +134,10 @@ function playCard(room, playerId, cardIndex) {
   }
 
   room.game.discardPile.push(card);
+
+  // Advance turn
+  const playerCount = room.players.length;
+  room.game.currentTurn = (room.game.currentTurn + room.game.direction + playerCount) % playerCount;
 
   return { success: true, card };
 }
