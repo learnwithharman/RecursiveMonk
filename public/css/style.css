@@ -195,3 +195,120 @@ input:focus {
   font-size: 0.65rem;
   cursor: pointer;
 }
+
+.direction-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #0f0f23;
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  border: 1px dashed #334155;
+  margin: 0.75rem 0;
+  transition: all 0.3s ease;
+}
+
+.direction-container.ccw {
+  border-color: #e94560;
+  box-shadow: 0 0 8px rgba(233, 69, 96, 0.2);
+}
+
+.direction-container.cw {
+  border-color: #06d6a0;
+  box-shadow: 0 0 8px rgba(6, 214, 160, 0.2);
+}
+
+.direction-arrow {
+  font-size: 1.1rem;
+  font-weight: bold;
+  transition: transform 0.6s ease;
+  display: inline-block;
+}
+
+.direction-container.cw .direction-arrow {
+  color: #06d6a0;
+  transform: rotate(0deg);
+}
+
+.direction-container.ccw .direction-arrow {
+  color: #e94560;
+  transform: rotate(-180deg);
+}
+
+.direction-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #cbd5e1;
+}
+
+.log-container {
+  max-height: 120px;
+  overflow-y: auto;
+  background: #0f0f23;
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #94a3b8;
+  text-align: left;
+  scrollbar-width: thin;
+  scrollbar-color: #334155 #0f0f23;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.log-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.log-container::-webkit-scrollbar-track {
+  background: #0f0f23;
+}
+
+.log-container::-webkit-scrollbar-thumb {
+  background-color: #334155;
+  border-radius: 3px;
+}
+
+.log-item {
+  padding: 0.35rem 0.5rem;
+  border-left: 3px solid #475569;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 0 4px 4px 0;
+  animation: slideIn 0.2s ease-out;
+}
+
+.log-item.log-normal {
+  border-left-color: #3b82f6;
+}
+
+.log-item.log-skip {
+  border-left-color: #f59e0b;
+}
+
+.log-item.log-reverse {
+  border-left-color: #10b981;
+}
+
+.log-item.log-draw2 {
+  border-left-color: #ec4899;
+}
+
+.log-item.log-start {
+  border-left-color: #8b5cf6;
+  font-weight: 500;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
