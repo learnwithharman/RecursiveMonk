@@ -62,11 +62,81 @@ function startGame(room) {
     currentTurn: 0,
     direction: 1,
     hands: {},
+    logs: [],
   };
 
   room.players.forEach((player, index) => {
     room.game.hands[player.id] = hands[index];
   });
+
+  // Apply starting card effect
+  const topCard = discardPile[discardPile.length - 1];
+  const playerCount = room.players.length;
+
+  if (topCard.value === "skip") {
+    const skippedPlayer = room.players[room.game.currentTurn];
+    let nextTurn = (room.game.currentTurn + room.game.direction) % playerCount;
+    if (nextTurn < 0) {
+      nextTurn += playerCount;
+    }
+    room.game.currentTurn = nextTurn;
+    
+    room.game.logs.push({
+      type: "start-skip",
+      card: topCard,
+      target: skippedPlayer.name,
+    });
+  } else if (topCard.value === "reverse") {
+    room.game.direction = -room.game.direction;
+    
+    if (playerCount === 2) {
+      const skippedPlayer = room.players[room.game.currentTurn];
+      let nextTurn = (room.game.currentTurn + room.game.direction) % playerCount;
+      if (nextTurn < 0) {
+        nextTurn += playerCount;
+      }
+      room.game.currentTurn = nextTurn;
+      
+      room.game.logs.push({
+        type: "start-reverse-skip",
+        card: topCard,
+        target: skippedPlayer.name,
+      });
+    } else {
+      let nextTurn = (0 + room.game.direction) % playerCount;
+      if (nextTurn < 0) {
+        nextTurn += playerCount;
+      }
+      room.game.currentTurn = nextTurn;
+      
+      room.game.logs.push({
+        type: "start-reverse",
+        card: topCard,
+      });
+    }
+  } else if (topCard.value === "draw2") {
+    const targetPlayer = room.players[0];
+    const drawn = drawFromDeck(room, 2);
+    room.game.hands[targetPlayer.id].push(...drawn);
+    
+    let nextTurn = (room.game.currentTurn + room.game.direction) % playerCount;
+    if (nextTurn < 0) {
+      nextTurn += playerCount;
+    }
+    room.game.currentTurn = nextTurn;
+    
+    room.game.logs.push({
+      type: "start-draw2",
+      card: topCard,
+      target: targetPlayer.name,
+      count: drawn.length,
+    });
+  } else {
+    room.game.logs.push({
+      type: "start",
+      card: topCard,
+    });
+  }
 
   return room;
 }
@@ -89,6 +159,7 @@ function getPublicGameState(room) {
       name: p.name,
       cardCount: room.game.hands[p.id].length,
     })),
+    logs: room.game.logs || [],
   };
 }
 
@@ -135,11 +206,103 @@ function playCard(room, playerId, cardIndex) {
 
   room.game.discardPile.push(card);
 
-  // Advance turn
+  // Apply card effects and determine turn advancement steps
   const playerCount = room.players.length;
-  room.game.currentTurn = (room.game.currentTurn + room.game.direction + playerCount) % playerCount;
+  let turnSteps = 1;
+  let actionLog = null;
 
-  return { success: true, card };
+  if (card.value === "skip") {
+    turnSteps = 2;
+    const skippedPlayerIndex = (room.game.currentTurn + room.game.direction + playerCount) % playerCount;
+    const skippedPlayer = room.players[skippedPlayerIndex];
+    actionLog = {
+      type: "skip",
+      player: activePlayer.name,
+      target: skippedPlayer.name,
+      card,
+    };
+  } else if (card.value === "reverse") {
+    room.game.direction = -room.game.direction;
+    if (playerCount === 2) {
+      turnSteps = 2;
+      const skippedPlayerIndex = (room.game.currentTurn + room.game.direction + playerCount) % playerCount;
+      const skippedPlayer = room.players[skippedPlayerIndex];
+      actionLog = {
+        type: "reverse-skip",
+        player: activePlayer.name,
+        target: skippedPlayer.name,
+        card,
+      };
+    } else {
+      turnSteps = 1;
+      actionLog = {
+        type: "reverse",
+        player: activePlayer.name,
+        direction: room.game.direction,
+        card,
+      };
+    }
+  } else if (card.value === "draw2") {
+    const targetPlayerIndex = (room.game.currentTurn + room.game.direction + playerCount) % playerCount;
+    const targetPlayer = room.players[targetPlayerIndex];
+
+    const drawnCards = drawFromDeck(room, 2);
+    room.game.hands[targetPlayer.id].push(...drawnCards);
+
+    turnSteps = 2;
+    actionLog = {
+      type: "draw2",
+      player: activePlayer.name,
+      target: targetPlayer.name,
+      count: drawnCards.length,
+      card,
+    };
+  } else {
+    actionLog = {
+      type: "normal",
+      player: activePlayer.name,
+      card: card,
+    };
+  }
+
+  // Advance turn safely
+  let nextTurn = (room.game.currentTurn + turnSteps * room.game.direction) % playerCount;
+  if (nextTurn < 0) {
+    nextTurn += playerCount;
+  }
+  room.game.currentTurn = nextTurn;
+
+  if (!room.game.logs) room.game.logs = [];
+  room.game.logs.push(actionLog);
+  if (room.game.logs.length > 15) {
+    room.game.logs.shift();
+  }
+
+  return { success: true, card, log: actionLog };
+}
+
+function drawFromDeck(room, count) {
+  const drawn = [];
+  for (let i = 0; i < count; i++) {
+    if (room.game.drawPile.length === 0) {
+      const discardPile = room.game.discardPile;
+      if (discardPile.length <= 1) {
+        break;
+      }
+
+      const topCard = discardPile.pop();
+      const rest = discardPile.splice(0, discardPile.length);
+
+      rest.forEach((c) => {
+        delete c.activeColor;
+      });
+
+      room.game.drawPile = shuffle(rest);
+      room.game.discardPile = [topCard];
+    }
+    drawn.push(room.game.drawPile.pop());
+  }
+  return drawn;
 }
 
 function drawCard(room, playerId) {
@@ -150,32 +313,32 @@ function drawCard(room, playerId) {
     return { error: "It is not your turn" };
   }
 
-  // Reshuffle discard pile if draw pile is empty
-  if (room.game.drawPile.length === 0) {
-    const discardPile = room.game.discardPile;
-    if (discardPile.length <= 1) {
-      return { error: "No cards left in the deck to draw" };
-    }
-
-    const topCard = discardPile.pop();
-    const rest = discardPile.splice(0, discardPile.length);
-
-    rest.forEach((c) => {
-      delete c.activeColor;
-    });
-
-    room.game.drawPile = shuffle(rest);
-    room.game.discardPile = [topCard];
+  const drawn = drawFromDeck(room, 1);
+  if (drawn.length === 0) {
+    return { error: "No cards left in the deck to draw" };
   }
 
-  const card = room.game.drawPile.pop();
-  room.game.hands[playerId].push(card);
+  room.game.hands[playerId].push(...drawn);
+
+  const actionLog = {
+    type: "draw",
+    player: activePlayer.name,
+  };
+  if (!room.game.logs) room.game.logs = [];
+  room.game.logs.push(actionLog);
+  if (room.game.logs.length > 15) {
+    room.game.logs.shift();
+  }
 
   // Auto-advance turn to the next player after drawing
   const playerCount = room.players.length;
-  room.game.currentTurn = (room.game.currentTurn + room.game.direction + playerCount) % playerCount;
+  let nextTurn = (room.game.currentTurn + room.game.direction) % playerCount;
+  if (nextTurn < 0) {
+    nextTurn += playerCount;
+  }
+  room.game.currentTurn = nextTurn;
 
-  return { success: true, card };
+  return { success: true, card: drawn[0], log: actionLog };
 }
 
 module.exports = {
