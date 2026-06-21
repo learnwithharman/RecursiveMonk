@@ -8,7 +8,17 @@ const {
   getRoomByPlayer,
   getPublicRoom,
 } = require("./server/rooms");
-const { startGame, getPublicGameState, getPlayerHand, playCard, drawCard } = require("./server/game");
+const {
+  startGame,
+  resetGame,
+  getPublicGameState,
+  getPlayerHand,
+  playCard,
+  chooseColor,
+  callUno,
+  challengeUno,
+  drawCard,
+} = require("./server/game");
 
 const app = express();
 const server = http.createServer(app);
@@ -20,11 +30,17 @@ function broadcastRoom(room) {
   io.to(room.code).emit("room-updated", getPublicRoom(room));
 }
 
+function broadcastGame(room) {
+  room.players.forEach((player) => {
+    io.to(player.id).emit("your-hand", getPlayerHand(room, player.id));
+  });
+  io.to(room.code).emit("game-updated", getPublicGameState(room));
+}
+
 io.on("connection", (socket) => {
   socket.on("create-room", ({ name }) => {
     const playerName = (name || "Player").trim().slice(0, 20) || "Player";
     const room = createRoom(socket.id, playerName);
-
     socket.join(room.code);
     socket.emit("room-joined", getPublicRoom(room));
     broadcastRoom(room);
@@ -33,12 +49,10 @@ io.on("connection", (socket) => {
   socket.on("join-room", ({ code, name }) => {
     const playerName = (name || "Player").trim().slice(0, 20) || "Player";
     const result = joinRoom(code, socket.id, playerName);
-
     if (result.error) {
       socket.emit("room-error", result.error);
       return;
     }
-
     socket.join(result.room.code);
     socket.emit("room-joined", getPublicRoom(result.room));
     broadcastRoom(result.room);
@@ -47,7 +61,6 @@ io.on("connection", (socket) => {
   socket.on("leave-room", () => {
     const room = leaveRoom(socket.id);
     if (!room) return;
-
     socket.leave(room.code);
     broadcastRoom(room);
   });
@@ -70,7 +83,6 @@ io.on("connection", (socket) => {
     room.players.forEach((player) => {
       io.to(player.id).emit("your-hand", getPlayerHand(room, player.id));
     });
-
     io.to(room.code).emit("game-started", getPublicGameState(room));
   });
 
@@ -84,11 +96,20 @@ io.on("connection", (socket) => {
       return;
     }
 
-    // Send updated hand to each player and update public game state
-    room.players.forEach((player) => {
-      io.to(player.id).emit("your-hand", getPlayerHand(room, player.id));
-    });
-    io.to(room.code).emit("game-updated", getPublicGameState(room));
+    broadcastGame(room);
+  });
+
+  socket.on("choose-color", ({ color }) => {
+    const room = getRoomByPlayer(socket.id);
+    if (!room) return;
+
+    const result = chooseColor(room, socket.id, color);
+    if (result.error) {
+      socket.emit("room-error", result.error);
+      return;
+    }
+
+    broadcastGame(room);
   });
 
   socket.on("draw-card", () => {
@@ -101,11 +122,48 @@ io.on("connection", (socket) => {
       return;
     }
 
-    // Broadcast updated player hands and public game state
-    room.players.forEach((player) => {
-      io.to(player.id).emit("your-hand", getPlayerHand(room, player.id));
-    });
+    broadcastGame(room);
+  });
+
+  socket.on("call-uno", () => {
+    const room = getRoomByPlayer(socket.id);
+    if (!room) return;
+
+    const result = callUno(room, socket.id);
+    if (result.error) {
+      socket.emit("room-error", result.error);
+      return;
+    }
+
+    // Broadcast state so UNO badge updates for everyone
     io.to(room.code).emit("game-updated", getPublicGameState(room));
+  });
+
+  socket.on("challenge-uno", () => {
+    const room = getRoomByPlayer(socket.id);
+    if (!room) return;
+
+    const result = challengeUno(room, socket.id);
+    if (result.error) {
+      socket.emit("room-error", result.error);
+      return;
+    }
+
+    broadcastGame(room);
+  });
+
+  socket.on("reset-game", () => {
+    const room = getRoomByPlayer(socket.id);
+    if (!room) return;
+
+    const result = resetGame(room, socket.id);
+    if (result.error) {
+      socket.emit("room-error", result.error);
+      return;
+    }
+
+    // Broadcast updated room so everyone returns to lobby
+    broadcastRoom(room);
   });
 
   socket.on("disconnect", () => {
