@@ -68,10 +68,41 @@
       <p class="waiting-msg">Your hand</p>
       <div class="hand" id="my-hand"></div>
     </div>
+    <div class="card" id="player-controls">
+      <div class="action-buttons-row">
+        <button class="btn btn-primary" id="btn-call-uno">Call UNO!</button>
+        <button class="btn btn-secondary" id="btn-challenge-uno">Challenge UNO!</button>
+      </div>
+    </div>
     <div class="card">
       <p class="waiting-msg">Activity Log</p>
       <div class="log-container" id="game-log"></div>
     </div>
+  </div>
+</div>
+
+<!-- Wild Color Picker Modal -->
+<div id="wild-modal" class="modal-overlay hidden">
+  <div class="modal-content">
+    <h2>Select Color</h2>
+    <p class="modal-subtitle">Choose a color for the wild card</p>
+    <div class="color-picker-grid">
+      <button class="color-picker-btn red-btn" data-color="red">Red</button>
+      <button class="color-picker-btn yellow-btn" data-color="yellow">Yellow</button>
+      <button class="color-picker-btn green-btn" data-color="green">Green</button>
+      <button class="color-picker-btn blue-btn" data-color="blue">Blue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Game Over Modal -->
+<div id="game-over-modal" class="modal-overlay hidden">
+  <div class="modal-content">
+    <div class="trophy-icon">🏆</div>
+    <h2>Game Over</h2>
+    <p id="winner-announcement" class="winner-text">Player won the game!</p>
+    <button class="btn btn-primary hidden" id="btn-restart">Restart Game</button>
+    <p id="restart-waiting-msg" class="waiting-msg">Waiting for host to restart...</p>
   </div>
 </div>
 

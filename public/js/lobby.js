@@ -11,6 +11,14 @@ const playerList = document.getElementById("player-list");
 const playerCount = document.getElementById("player-count");
 const btnStart = document.getElementById("btn-start");
 
+const wildModal = document.getElementById("wild-modal");
+const gameOverModal = document.getElementById("game-over-modal");
+const winnerAnnouncement = document.getElementById("winner-announcement");
+const btnRestart = document.getElementById("btn-restart");
+const restartWaitingMsg = document.getElementById("restart-waiting-msg");
+const btnCallUno = document.getElementById("btn-call-uno");
+const btnChallengeUno = document.getElementById("btn-challenge-uno");
+
 let mySocketId = null;
 let currentRoom = null;
 
@@ -53,6 +61,10 @@ function renderLobby(room) {
   gameScreen.classList.add("hidden");
   lobbyScreen.classList.remove("hidden");
 
+  // Hide modals when entering the lobby
+  wildModal.classList.add("hidden");
+  gameOverModal.classList.add("hidden");
+
   roomCodeDisplay.textContent = room.code;
   playerList.innerHTML = "";
 
@@ -79,7 +91,8 @@ function getLogClass(type) {
   if (type.startsWith("start")) return "log-item log-start";
   if (type === "skip" || type === "reverse-skip") return "log-item log-skip";
   if (type === "reverse") return "log-item log-reverse";
-  if (type === "draw2") return "log-item log-draw2";
+  if (type === "draw2" || type === "wild4") return "log-item log-draw2";
+  if (type === "uno-call" || type === "uno-penalty") return "log-item log-uno";
   return "log-item log-normal";
 }
 
@@ -110,6 +123,16 @@ function formatLogItem(log) {
       return `<strong>${log.player}</strong> played <strong>${cardStr}</strong>! <strong>${log.target}</strong> drew ${log.count} cards and was skipped.`;
     case "draw":
       return `<strong>${log.player}</strong> drew a card.`;
+    case "wild":
+      return `<strong>${log.player}</strong> played a <strong>${log.card.value.toUpperCase()}</strong> card and is choosing a color.`;
+    case "wild-color":
+      return `<strong>${log.player}</strong> chose color <strong>${log.color.toUpperCase()}</strong>.`;
+    case "wild4":
+      return `<strong>${log.player}</strong> played a <strong>WILD DRAW 4</strong> card, chose color <strong>${log.color.toUpperCase()}</strong>! <strong>${log.target}</strong> drew 4 cards and was skipped.`;
+    case "uno-call":
+      return `📣 <strong>${log.player}</strong> called <strong>UNO!</strong>`;
+    case "uno-penalty":
+      return `⚡ <strong>${log.challenger}</strong> challenged <strong>${log.target}</strong> for not calling UNO! <strong>${log.target}</strong> drew ${log.count} penalty cards.`;
     default:
       return "Unknown game event.";
   }
@@ -167,6 +190,12 @@ function renderGame(gameState, hand) {
       badge.textContent = "TURN";
       li.appendChild(badge);
     }
+    if (player.calledUno) {
+      const unoBadge = document.createElement("span");
+      unoBadge.className = "badge-uno";
+      unoBadge.textContent = "UNO!";
+      li.appendChild(unoBadge);
+    }
     gamePlayerList.appendChild(li);
   });
 
@@ -195,6 +224,45 @@ function renderGame(gameState, hand) {
     gameLogEl.appendChild(itemEl);
   });
   gameLogEl.scrollTop = gameLogEl.scrollHeight;
+
+  // Wild Color Picker Modal Sync
+  if (gameState.pendingWild && gameState.pendingWildPlayerId === mySocketId) {
+    wildModal.classList.remove("hidden");
+  } else {
+    wildModal.classList.add("hidden");
+  }
+
+  // Game Over Modal Sync
+  if (gameState.status === "finished") {
+    gameOverModal.classList.remove("hidden");
+    winnerAnnouncement.textContent = `${gameState.winner} won the game!`;
+    const isHost = gameState.hostId === mySocketId;
+    btnRestart.classList.toggle("hidden", !isHost);
+    restartWaitingMsg.classList.toggle("hidden", isHost);
+  } else {
+    gameOverModal.classList.add("hidden");
+  }
+
+  // Action Buttons Sync (Call UNO & Challenge)
+  const me = gameState.players.find((p) => p.id === mySocketId);
+  const alreadyCalledUno = me ? me.calledUno : false;
+
+  if (hand.length === 1 && !alreadyCalledUno) {
+    btnCallUno.disabled = false;
+    btnCallUno.classList.add("pulse-active");
+  } else {
+    btnCallUno.disabled = true;
+    btnCallUno.classList.remove("pulse-active");
+  }
+
+  const canChallenge = (gameState.unoPlayers || []).some((id) => id !== mySocketId);
+  if (canChallenge) {
+    btnChallengeUno.disabled = false;
+    btnChallengeUno.classList.add("challenge-pulse");
+  } else {
+    btnChallengeUno.disabled = true;
+    btnChallengeUno.classList.remove("challenge-pulse");
+  }
 }
 
 function backToHome() {
@@ -224,6 +292,31 @@ document.getElementById("btn-leave").addEventListener("click", () => {
 
 btnStart.addEventListener("click", () => {
   socket.emit("start-game");
+});
+
+// Setup color picker buttons listener
+document.querySelectorAll(".color-picker-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const color = btn.dataset.color;
+    socket.emit("choose-color", { color });
+    wildModal.classList.add("hidden");
+  });
+});
+
+// Call UNO button click listener
+btnCallUno.addEventListener("click", () => {
+  socket.emit("call-uno");
+});
+
+// Challenge UNO button click listener
+btnChallengeUno.addEventListener("click", () => {
+  socket.emit("challenge-uno");
+});
+
+// Restart Game button click listener
+btnRestart.addEventListener("click", () => {
+  socket.emit("reset-game");
+  gameOverModal.classList.add("hidden");
 });
 
 socket.on("room-joined", renderLobby);
