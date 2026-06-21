@@ -34,10 +34,10 @@ Personal build plan. One small chunk at a time, ship something playable early.
 
 | Task | Status |
 |------|--------|
-| Wild — pick a color | ⬜ |
-| Wild Draw Four (+4) | ⬜ |
-| "UNO!" call + penalty | ⬜ |
-| Win detection + round reset | ⬜ |
+| Wild — pick a color | ✅ Done |
+| Wild Draw Four (+4) | ✅ Done |
+| "UNO!" call + penalty | ✅ Done |
+| Win detection + round reset | ✅ Done |
 
 ---
 
