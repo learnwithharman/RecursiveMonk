@@ -1,23 +1,25 @@
 const socket = io();
 
-const homeScreen = document.getElementById("home-screen");
-const lobbyScreen = document.getElementById("lobby-screen");
-const gameScreen = document.getElementById("game-screen");
-const errorBox = document.getElementById("error-box");
+// === DOM References ===
+const homeScreen    = document.getElementById("home-screen");
+const lobbyScreen   = document.getElementById("lobby-screen");
+const gameScreen    = document.getElementById("game-screen");
+const errorBox      = document.getElementById("error-box");
 const playerNameInput = document.getElementById("player-name");
-const roomCodeInput = document.getElementById("room-code-input");
+const roomCodeInput   = document.getElementById("room-code-input");
 const roomCodeDisplay = document.getElementById("room-code-display");
-const playerList = document.getElementById("player-list");
-const playerCount = document.getElementById("player-count");
-const btnStart = document.getElementById("btn-start");
+const playerList      = document.getElementById("player-list");
+const playerCount     = document.getElementById("player-count");
+const btnStart        = document.getElementById("btn-start");
+const appContainer    = document.querySelector(".container");
 
-const wildModal = document.getElementById("wild-modal");
-const gameOverModal = document.getElementById("game-over-modal");
+const wildModal          = document.getElementById("wild-modal");
+const gameOverModal      = document.getElementById("game-over-modal");
 const winnerAnnouncement = document.getElementById("winner-announcement");
-const btnRestart = document.getElementById("btn-restart");
-const restartWaitingMsg = document.getElementById("restart-waiting-msg");
-const btnCallUno = document.getElementById("btn-call-uno");
-const btnChallengeUno = document.getElementById("btn-challenge-uno");
+const btnRestart         = document.getElementById("btn-restart");
+const restartWaitingMsg  = document.getElementById("restart-waiting-msg");
+const btnCallUno         = document.getElementById("btn-call-uno");
+const btnChallengeUno    = document.getElementById("btn-challenge-uno");
 
 let mySocketId = null;
 let currentRoom = null;
@@ -25,6 +27,10 @@ let currentRoom = null;
 socket.on("connect", () => {
   mySocketId = socket.id;
 });
+
+// =====================================================
+// UTILITIES
+// =====================================================
 
 function showError(msg) {
   errorBox.textContent = msg;
@@ -36,32 +42,178 @@ function getName() {
   return playerNameInput.value.trim() || "Player";
 }
 
-function formatCard(card) {
-  const labels = {
-    skip: "Skip",
-    reverse: "Rev",
-    draw2: "+2",
-    wild: "Wild",
-    wild4: "+4",
+// =====================================================
+// CARD RENDERING
+// =====================================================
+
+/**
+ * Returns the display symbol for a card value.
+ * Used in card corners and center.
+ */
+function getCardSymbol(card) {
+  const symbols = {
+    skip:    "⊘",
+    reverse: "⇆",
+    draw2:   "+2",
+    wild:    "★",
+    wild4:   "+4",
   };
-  return labels[card.value] || card.value;
+  return symbols[card.value] !== undefined ? symbols[card.value] : card.value;
 }
 
-function renderCardEl(card) {
+/**
+ * Returns a short text description for use in log messages.
+ */
+function getCardLabel(card) {
+  const labels = { skip: "Skip", reverse: "Reverse", draw2: "+2", wild: "Wild", wild4: "Wild +4" };
+  const displayColor = card.activeColor || card.color;
+  const value = labels[card.value] || card.value;
+  return card.color === "wild"
+    ? value
+    : `${displayColor.charAt(0).toUpperCase() + displayColor.slice(1)} ${value}`;
+}
+
+/**
+ * Creates a full UNO card DOM element with proper design.
+ * @param {object} card  - { color, value, activeColor? }
+ * @param {object} opts  - { playable: bool }
+ */
+function renderCardEl(card, { playable = true } = {}) {
   const el = document.createElement("div");
   const cardColor = card.activeColor || card.color;
   el.className = `uno-card ${cardColor}`;
-  el.textContent = card.color === "wild" ? formatCard(card) : `${card.color.slice(0, 1).toUpperCase()} ${formatCard(card)}`;
+  if (!playable) el.classList.add("inactive");
+
+  const symbol = getCardSymbol(card);
+
+  const cornerTop = document.createElement("span");
+  cornerTop.className = "card-corner card-corner-top";
+  cornerTop.textContent = symbol;
+
+  const center = document.createElement("span");
+  center.className = "card-center";
+  center.textContent = symbol;
+
+  const cornerBot = document.createElement("span");
+  cornerBot.className = "card-corner card-corner-bottom";
+  cornerBot.textContent = symbol;
+
+  el.appendChild(cornerTop);
+  el.appendChild(center);
+  el.appendChild(cornerBot);
+
   return el;
 }
 
+/**
+ * Updates the top-card element's appearance and triggers animation.
+ */
+function updateTopCard(topCard) {
+  const el = document.getElementById("top-card");
+  const topCardColor = topCard.activeColor || topCard.color;
+  const symbol = getCardSymbol(topCard);
+  const newKey = `${topCardColor}-${topCard.value}-${topCard.activeColor || ""}`;
+  const prevKey = el.dataset.cardKey;
+
+  // Update color class
+  el.className = `uno-card ${topCardColor}`;
+
+  // Update text content in spans
+  el.querySelector(".card-corner-top").textContent    = symbol;
+  el.querySelector(".card-center").textContent        = symbol;
+  el.querySelector(".card-corner-bottom").textContent = symbol;
+
+  // Trigger drop-in animation when card changes
+  if (prevKey && prevKey !== newKey) {
+    void el.offsetWidth; // force reflow to restart animation
+    el.classList.add("card-played");
+  }
+  el.dataset.cardKey = newKey;
+}
+
+// =====================================================
+// OPPONENT CARD BACKS
+// =====================================================
+
+/**
+ * Renders all opponent areas with face-down stacked card backs.
+ */
+function renderOpponents(gameState) {
+  const opponents = gameState.players.filter((p) => p.id !== mySocketId);
+  const area = document.getElementById("opponents-area");
+  area.innerHTML = "";
+
+  if (opponents.length === 0) return;
+
+  opponents.forEach((player) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "opponent-wrapper";
+    if (player.id === gameState.currentPlayerId) {
+      wrapper.classList.add("opponent-active");
+    }
+
+    // Name row
+    const nameRow = document.createElement("div");
+    nameRow.className = "opponent-name-row";
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "opponent-name";
+    nameEl.textContent = player.name;
+    nameRow.appendChild(nameEl);
+
+    if (player.id === gameState.currentPlayerId) {
+      const badge = document.createElement("span");
+      badge.className = "badge";
+      badge.textContent = "TURN";
+      nameRow.appendChild(badge);
+    }
+
+    if (player.calledUno) {
+      const unoBadge = document.createElement("span");
+      unoBadge.className = "badge-uno";
+      unoBadge.textContent = "UNO!";
+      nameRow.appendChild(unoBadge);
+    }
+
+    const countEl = document.createElement("span");
+    countEl.className = "opponent-card-count";
+    countEl.textContent = `${player.cardCount} card${player.cardCount !== 1 ? "s" : ""}`;
+    nameRow.appendChild(countEl);
+
+    // Stacked face-down cards
+    const cardsEl = document.createElement("div");
+    cardsEl.className = "opponent-cards";
+    const displayCount = Math.min(player.cardCount, 10);
+    for (let i = 0; i < displayCount; i++) {
+      const cardBack = document.createElement("div");
+      cardBack.className = "uno-card card-back";
+      cardsEl.appendChild(cardBack);
+    }
+    if (player.cardCount > 10) {
+      const extra = document.createElement("span");
+      extra.className = "opponent-card-extra";
+      extra.textContent = `+${player.cardCount - 10}`;
+      cardsEl.appendChild(extra);
+    }
+
+    wrapper.appendChild(nameRow);
+    wrapper.appendChild(cardsEl);
+    area.appendChild(wrapper);
+  });
+}
+
+// =====================================================
+// LOBBY SCREEN
+// =====================================================
+
 function renderLobby(room) {
   currentRoom = room;
+
   homeScreen.classList.add("hidden");
   gameScreen.classList.add("hidden");
   lobbyScreen.classList.remove("hidden");
+  appContainer.classList.remove("game-mode");
 
-  // Hide modals when entering the lobby
   wildModal.classList.add("hidden");
   gameOverModal.classList.add("hidden");
 
@@ -87,103 +239,112 @@ function renderLobby(room) {
   btnStart.disabled = room.players.length < 2;
 }
 
+// =====================================================
+// ACTIVITY LOG
+// =====================================================
+
 function getLogClass(type) {
-  if (type.startsWith("start")) return "log-item log-start";
-  if (type === "skip" || type === "reverse-skip") return "log-item log-skip";
-  if (type === "reverse") return "log-item log-reverse";
-  if (type === "draw2" || type === "wild4") return "log-item log-draw2";
+  if (type.startsWith("start"))                     return "log-item log-start";
+  if (type === "skip" || type === "reverse-skip")   return "log-item log-skip";
+  if (type === "reverse")                           return "log-item log-reverse";
+  if (type === "draw2" || type === "wild4")         return "log-item log-draw2";
   if (type === "uno-call" || type === "uno-penalty") return "log-item log-uno";
   return "log-item log-normal";
 }
 
 function formatLogItem(log) {
   if (!log) return "";
-  const cardStr = log.card ? `${log.card.color.toUpperCase()} ${formatCard(log.card)}` : "";
-  
+  const cardStr = log.card ? `<strong>${getCardLabel(log.card)}</strong>` : "";
+
   switch (log.type) {
     case "start":
-      return `Game started! Top card is <strong>${cardStr}</strong>.`;
+      return `Game started! Top card: ${cardStr}.`;
     case "start-skip":
-      return `Game started with <strong>${cardStr}</strong>! <strong>${log.target}</strong> was skipped.`;
+      return `Started with ${cardStr}! <strong>${log.target}</strong> skipped.`;
     case "start-reverse":
-      return `Game started with <strong>${cardStr}</strong>! Play direction is now Counter-clockwise.`;
+      return `Started with ${cardStr}! Direction flipped.`;
     case "start-reverse-skip":
-      return `Game started with <strong>${cardStr}</strong>! <strong>${log.target}</strong> was skipped.`;
+      return `Started with ${cardStr}! <strong>${log.target}</strong> skipped.`;
     case "start-draw2":
-      return `Game started with <strong>${cardStr}</strong>! <strong>${log.target}</strong> drew 2 cards and was skipped.`;
+      return `Started with ${cardStr}! <strong>${log.target}</strong> drew 2, skipped.`;
     case "normal":
-      return `<strong>${log.player}</strong> played <strong>${cardStr}</strong>.`;
+      return `<strong>${log.player}</strong> played ${cardStr}.`;
     case "skip":
-      return `<strong>${log.player}</strong> played <strong>${cardStr}</strong>! <strong>${log.target}</strong> was skipped.`;
+      return `<strong>${log.player}</strong> played ${cardStr} — <strong>${log.target}</strong> skipped.`;
     case "reverse":
-      return `<strong>${log.player}</strong> played <strong>${cardStr}</strong>! Play direction is now ${log.direction === 1 ? "Clockwise" : "Counter-clockwise"}.`;
+      return `<strong>${log.player}</strong> reversed! Now ${log.direction === 1 ? "Clockwise" : "Counter-CW"}.`;
     case "reverse-skip":
-      return `<strong>${log.player}</strong> played <strong>${cardStr}</strong>! <strong>${log.target}</strong> was skipped.`;
+      return `<strong>${log.player}</strong> reversed — <strong>${log.target}</strong> skipped.`;
     case "draw2":
-      return `<strong>${log.player}</strong> played <strong>${cardStr}</strong>! <strong>${log.target}</strong> drew ${log.count} cards and was skipped.`;
+      return `<strong>${log.player}</strong> played +2! <strong>${log.target}</strong> drew ${log.count}.`;
     case "draw":
       return `<strong>${log.player}</strong> drew a card.`;
     case "wild":
-      return `<strong>${log.player}</strong> played a <strong>${log.card.value.toUpperCase()}</strong> card and is choosing a color.`;
+      return `<strong>${log.player}</strong> played Wild — choosing color.`;
     case "wild-color":
-      return `<strong>${log.player}</strong> chose color <strong>${log.color.toUpperCase()}</strong>.`;
+      return `<strong>${log.player}</strong> chose <strong>${log.color}</strong>.`;
     case "wild4":
-      return `<strong>${log.player}</strong> played a <strong>WILD DRAW 4</strong> card, chose color <strong>${log.color.toUpperCase()}</strong>! <strong>${log.target}</strong> drew 4 cards and was skipped.`;
+      return `<strong>${log.player}</strong> played Wild +4, chose <strong>${log.color}</strong>! <strong>${log.target}</strong> drew ${log.count}.`;
     case "uno-call":
       return `📣 <strong>${log.player}</strong> called <strong>UNO!</strong>`;
     case "uno-penalty":
-      return `⚡ <strong>${log.challenger}</strong> challenged <strong>${log.target}</strong> for not calling UNO! <strong>${log.target}</strong> drew ${log.count} penalty cards.`;
+      return `⚡ <strong>${log.challenger}</strong> challenged <strong>${log.target}</strong>! Drew ${log.count} penalty cards.`;
     default:
-      return "Unknown game event.";
+      return "Game event.";
   }
 }
+
+// =====================================================
+// GAME SCREEN
+// =====================================================
 
 function renderGame(gameState, hand) {
   homeScreen.classList.add("hidden");
   lobbyScreen.classList.add("hidden");
   gameScreen.classList.remove("hidden");
+  appContainer.classList.add("game-mode");
 
+  // Room code
   document.getElementById("game-room-code").textContent = gameState.code;
 
-  const topCardEl = document.getElementById("top-card");
-  const topCardColor = gameState.topCard.activeColor || gameState.topCard.color;
-  topCardEl.className = `uno-card ${topCardColor}`;
-  topCardEl.textContent = formatCard(gameState.topCard);
+  // Top card
+  updateTopCard(gameState.topCard);
 
-  // Render Direction Indicator
-  const directionIndicator = document.getElementById("direction-indicator");
-  const directionArrow = document.getElementById("direction-arrow");
-  const directionText = document.getElementById("direction-text");
+  // Direction indicator
+  const dirEl   = document.getElementById("direction-indicator");
+  const arrowEl = document.getElementById("direction-arrow");
+  const textEl  = document.getElementById("direction-text");
 
   if (gameState.direction === 1) {
-    directionIndicator.className = "direction-container cw";
-    directionArrow.textContent = "↻";
-    directionText.textContent = "Clockwise";
+    dirEl.className   = "direction-container cw";
+    arrowEl.textContent = "↻";
+    textEl.textContent  = "Clockwise";
   } else {
-    directionIndicator.className = "direction-container ccw";
-    directionArrow.textContent = "↺";
-    directionText.textContent = "Counter-Clockwise";
+    dirEl.className   = "direction-container ccw";
+    arrowEl.textContent = "↺";
+    textEl.textContent  = "Counter-CW";
   }
 
-  const isMyTurn = gameState.currentPlayerId === mySocketId;
-  document.getElementById("turn-info").textContent = isMyTurn
-    ? "Your turn!"
-    : `${gameState.currentPlayerName}'s turn`;
+  // Turn pill
+  const isMyTurn    = gameState.currentPlayerId === mySocketId;
+  const turnInfoEl  = document.getElementById("turn-info");
+  turnInfoEl.textContent = isMyTurn ? "⚡ Your turn!" : `${gameState.currentPlayerName}'s turn`;
+  turnInfoEl.className   = isMyTurn ? "turn-info-pill my-turn" : "turn-info-pill";
 
+  // Draw pile
   const drawPileEl = document.getElementById("draw-pile");
-  if (isMyTurn) {
-    drawPileEl.style.opacity = "1";
-    drawPileEl.style.cursor = "pointer";
-  } else {
-    drawPileEl.style.opacity = "0.6";
-    drawPileEl.style.cursor = "not-allowed";
-  }
+  drawPileEl.style.opacity       = isMyTurn ? "1"     : "0.5";
+  drawPileEl.style.pointerEvents = isMyTurn ? "auto"  : "none";
 
+  // Opponents
+  renderOpponents(gameState);
+
+  // Sidebar player list
   const gamePlayerList = document.getElementById("game-player-list");
   gamePlayerList.innerHTML = "";
   gameState.players.forEach((player) => {
     const li = document.createElement("li");
-    li.textContent = `${player.name} (${player.cardCount} cards)`;
+    li.textContent = player.name;
     if (player.id === gameState.currentPlayerId) {
       const badge = document.createElement("span");
       badge.className = "badge";
@@ -199,22 +360,22 @@ function renderGame(gameState, hand) {
     gamePlayerList.appendChild(li);
   });
 
+  // My hand
   const myHandEl = document.getElementById("my-hand");
   myHandEl.innerHTML = "";
   hand.forEach((card, index) => {
-    const cardEl = renderCardEl(card);
+    const cardEl = renderCardEl(card, { playable: isMyTurn });
+    // Stagger animation delay so cards "fan in"
+    cardEl.style.animationDelay = `${index * 0.04}s`;
     if (isMyTurn) {
       cardEl.addEventListener("click", () => {
         socket.emit("play-card", { cardIndex: index });
       });
-    } else {
-      cardEl.style.opacity = "0.6";
-      cardEl.style.cursor = "not-allowed";
     }
     myHandEl.appendChild(cardEl);
   });
 
-  // Render Activity Log
+  // Activity log
   const gameLogEl = document.getElementById("game-log");
   gameLogEl.innerHTML = "";
   (gameState.logs || []).forEach((log) => {
@@ -225,17 +386,17 @@ function renderGame(gameState, hand) {
   });
   gameLogEl.scrollTop = gameLogEl.scrollHeight;
 
-  // Wild Color Picker Modal Sync
+  // Wild color modal
   if (gameState.pendingWild && gameState.pendingWildPlayerId === mySocketId) {
     wildModal.classList.remove("hidden");
   } else {
     wildModal.classList.add("hidden");
   }
 
-  // Game Over Modal Sync
+  // Game over modal
   if (gameState.status === "finished") {
     gameOverModal.classList.remove("hidden");
-    winnerAnnouncement.textContent = `${gameState.winner} won the game!`;
+    winnerAnnouncement.textContent = `🎉 ${gameState.winner} won the game!`;
     const isHost = gameState.hostId === mySocketId;
     btnRestart.classList.toggle("hidden", !isHost);
     restartWaitingMsg.classList.toggle("hidden", isHost);
@@ -243,7 +404,7 @@ function renderGame(gameState, hand) {
     gameOverModal.classList.add("hidden");
   }
 
-  // Action Buttons Sync (Call UNO & Challenge)
+  // UNO action buttons
   const me = gameState.players.find((p) => p.id === mySocketId);
   const alreadyCalledUno = me ? me.calledUno : false;
 
@@ -270,7 +431,12 @@ function backToHome() {
   lobbyScreen.classList.add("hidden");
   gameScreen.classList.add("hidden");
   homeScreen.classList.remove("hidden");
+  appContainer.classList.remove("game-mode");
 }
+
+// =====================================================
+// EVENT LISTENERS
+// =====================================================
 
 document.getElementById("btn-create").addEventListener("click", () => {
   socket.emit("create-room", { name: getName() });
@@ -278,10 +444,7 @@ document.getElementById("btn-create").addEventListener("click", () => {
 
 document.getElementById("btn-join").addEventListener("click", () => {
   const code = roomCodeInput.value.trim();
-  if (!code) {
-    showError("Enter a room code");
-    return;
-  }
+  if (!code) { showError("Please enter a room code."); return; }
   socket.emit("join-room", { code, name: getName() });
 });
 
@@ -294,42 +457,45 @@ btnStart.addEventListener("click", () => {
   socket.emit("start-game");
 });
 
-// Setup color picker buttons listener
 document.querySelectorAll(".color-picker-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
-    const color = btn.dataset.color;
-    socket.emit("choose-color", { color });
+    socket.emit("choose-color", { color: btn.dataset.color });
     wildModal.classList.add("hidden");
   });
 });
 
-// Call UNO button click listener
 btnCallUno.addEventListener("click", () => {
   socket.emit("call-uno");
 });
 
-// Challenge UNO button click listener
 btnChallengeUno.addEventListener("click", () => {
   socket.emit("challenge-uno");
 });
 
-// Restart Game button click listener
 btnRestart.addEventListener("click", () => {
   socket.emit("reset-game");
   gameOverModal.classList.add("hidden");
 });
 
-socket.on("room-joined", renderLobby);
+document.getElementById("draw-pile").addEventListener("click", () => {
+  if (latestGameState && latestGameState.currentPlayerId === mySocketId) {
+    socket.emit("draw-card");
+  }
+});
+
+// =====================================================
+// SOCKET EVENTS
+// =====================================================
+
+socket.on("room-joined",  renderLobby);
 socket.on("room-updated", renderLobby);
-socket.on("room-error", showError);
+socket.on("room-error",   showError);
 
 let myHand = [];
 let latestGameState = null;
 
 function render() {
-  if (latestGameState) {
-    renderGame(latestGameState, myHand);
-  }
+  if (latestGameState) renderGame(latestGameState, myHand);
 }
 
 socket.on("your-hand", (hand) => {
@@ -345,10 +511,4 @@ socket.on("game-started", (gameState) => {
 socket.on("game-updated", (gameState) => {
   latestGameState = gameState;
   render();
-});
-
-document.getElementById("draw-pile").addEventListener("click", () => {
-  if (latestGameState && latestGameState.currentPlayerId === mySocketId) {
-    socket.emit("draw-card");
-  }
 });
