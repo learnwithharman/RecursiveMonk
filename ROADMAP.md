@@ -45,10 +45,14 @@ Personal build plan. One small chunk at a time, ship something playable early.
 
 | Task | Status |
 |------|--------|
-| Better card UI + animations | ⬜ |
-| Mobile layout | ⬜ |
+| Proper UNO card design (oval, corners, center symbol) | ✅ Done |
+| Two-column game table layout | ✅ Done |
+| Opponent face-down card backs (stacked) | ✅ Done |
+| Card play + hand fan-in animations | ✅ Done |
+| Fixed error toast (works in any screen) | ✅ Done |
+| Mobile responsive layout (single-column on small screens) | ✅ Done |
 | Sound / emotes (optional) | ⬜ |
-| Error handling + edge cases | ⬜ |
+| Error handling + edge cases (disconnect mid-game) | ⬜ |
 
 ---
 
@@ -71,5 +75,18 @@ Personal build plan. One small chunk at a time, ship something playable early.
 6. **Direction Indicator** — A live ↻/↺ indicator with animated color-coded glow shows the current play direction (Clockwise = green, Counter-Clockwise = red).
 7. **Activity Log** — A scrollable, color-coded log panel records every game event (plays, draws, skips, reverses, draw twos) with formatted human-readable messages.
 
-Next session: Wild card color picking + Wild Draw Four + Win detection.
+---
+
+## What I built today (Day 3)
+
+1. **Proper UNO Card Design** — Cards now look like real UNO cards: rotated oval decoration, corner labels (top-left / bottom-right), large center symbol, gradient color backgrounds.
+2. **Wild Card 4-Color Design** — Wild cards use a conic-gradient for the classic 4-quadrant red/yellow/green/blue look.
+3. **Opponent Card Backs** — Other players' cards are shown as stacked face-down card backs (up to 10 visible, overlapping for depth).
+4. **Two-Column Game Layout** — Game screen now uses a proper table layout: play area on the left (opponents + center + hand), sidebar on the right (action buttons + player list + log).
+5. **Card Animations** — Hand cards fan in with staggered delays; the discard pile top card does a drop-in bounce animation every time a new card is played.
+6. **Game-Mode Container** — Container expands from 480px to 1080px when the game starts, then collapses back on return to lobby.
+7. **Fixed Error Toast** — Error messages now appear as a fixed toast at the top of the screen, visible in all screens including during gameplay.
+8. **Mobile Responsive** — On screens under 820px, the sidebar collapses into a 2-column grid below the play area. On small phones, everything stacks vertically.
+
+Next session: Deploy to Render/Railway so anyone can join with a link.
 
