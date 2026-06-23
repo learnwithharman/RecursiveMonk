@@ -3,37 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Recursive Monk UNO</title>
+  <title>RecursiveMonk UNO — Multiplayer Card Game</title>
+  <meta name="description" content="Play UNO online with friends. Create or join a room and play the classic card game in real time.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 
+<!-- Global Error Toast -->
+<div id="error-box" class="error-toast hidden"></div>
+
 <div class="container">
-  <h1>Recursive Monk UNO</h1>
-  <p class="subtitle">Multiplayer card game in your browser</p>
+  <h1 class="app-title">RecursiveMonk</h1>
+  <p class="subtitle">Multiplayer UNO in your browser</p>
 
-  <!-- Home: create or join -->
+  <!-- =================== HOME SCREEN =================== -->
   <div id="home-screen">
-    <div id="error-box" class="error-msg hidden"></div>
-
     <div class="card">
-      <label for="player-name">Your name</label>
+      <label for="player-name">Your Name</label>
       <input id="player-name" type="text" placeholder="Enter your name" maxlength="20">
 
       <button class="btn btn-primary" id="btn-create">Create Room</button>
-      <p class="divider">— or —</p>
-      <label for="room-code-input">Room code</label>
+
+      <p class="divider">— or join an existing room —</p>
+
+      <label for="room-code-input">Room Code</label>
       <input id="room-code-input" type="text" placeholder="ABC123" maxlength="6" style="text-transform:uppercase">
       <button class="btn btn-secondary" id="btn-join">Join Room</button>
     </div>
   </div>
 
-  <!-- Lobby: waiting for players -->
+  <!-- =================== LOBBY SCREEN =================== -->
   <div id="lobby-screen" class="hidden">
     <div class="card">
       <p class="waiting-msg">Share this code with friends</p>
       <div class="room-code" id="room-code-display">------</div>
-
       <ul class="player-list" id="player-list"></ul>
       <p class="waiting-msg" id="player-count">1 / 10 players</p>
       <button class="btn btn-primary hidden" id="btn-start">Start Game</button>
@@ -41,67 +47,105 @@
     <button class="btn btn-secondary" id="btn-leave">Leave Room</button>
   </div>
 
-  <!-- Game: basic table view -->
+  <!-- =================== GAME SCREEN =================== -->
   <div id="game-screen" class="hidden">
-    <div class="card">
-      <p class="waiting-msg">Room <span id="game-room-code"></span></p>
-      <div class="table-center">
-        <div style="display: flex; gap: 1rem; justify-content: center; align-items: center; margin: 1rem 0;">
-          <div>
-            <p class="turn-label">Draw Pile</p>
-            <div class="uno-card wild" id="draw-pile" style="cursor: pointer; display: flex; align-items: center; justify-content: center;">UNO</div>
-          </div>
-          <div>
-            <p class="turn-label">Discard Pile</p>
-            <div class="uno-card" id="top-card">?</div>
-          </div>
-        </div>
-        <div id="direction-indicator" class="direction-container">
-          <span id="direction-arrow" class="direction-arrow">↻</span>
-          <span id="direction-text" class="direction-text">Clockwise</span>
-        </div>
-        <p class="turn-label" id="turn-info">Waiting...</p>
-      </div>
-      <ul class="player-list" id="game-player-list"></ul>
-    </div>
-    <div class="card">
-      <p class="waiting-msg">Your hand</p>
-      <div class="hand" id="my-hand"></div>
-    </div>
-    <div class="card" id="player-controls">
-      <div class="action-buttons-row">
-        <button class="btn btn-primary" id="btn-call-uno">Call UNO!</button>
-        <button class="btn btn-secondary" id="btn-challenge-uno">Challenge UNO!</button>
-      </div>
-    </div>
-    <div class="card">
-      <p class="waiting-msg">Activity Log</p>
-      <div class="log-container" id="game-log"></div>
-    </div>
-  </div>
-</div>
 
-<!-- Wild Color Picker Modal -->
+    <!-- Game Header Bar -->
+    <div class="game-header">
+      <div class="game-room-badge">🃏 Room: <strong id="game-room-code"></strong></div>
+      <div id="direction-indicator" class="direction-container">
+        <span id="direction-arrow" class="direction-arrow">↻</span>
+        <span id="direction-text" class="direction-text">Clockwise</span>
+      </div>
+      <div id="turn-info" class="turn-info-pill">Waiting...</div>
+    </div>
+
+    <!-- Game Grid -->
+    <div class="game-grid">
+
+      <!-- LEFT: Main Play Area -->
+      <div class="game-main">
+
+        <!-- Opponents -->
+        <div class="opponents-area" id="opponents-area">
+          <!-- Dynamically rendered by JS -->
+        </div>
+
+        <!-- Table Center: Piles -->
+        <div class="table-center">
+          <div class="pile-area">
+            <div class="pile-wrapper">
+              <p class="pile-label">Draw Pile</p>
+              <div class="uno-card card-back" id="draw-pile">
+                <span class="card-back-logo">UNO</span>
+              </div>
+            </div>
+            <div class="pile-wrapper">
+              <p class="pile-label">Discard Pile</p>
+              <div class="uno-card" id="top-card">
+                <span class="card-corner card-corner-top">?</span>
+                <span class="card-center">?</span>
+                <span class="card-corner card-corner-bottom">?</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- My Hand -->
+        <div class="my-hand-area">
+          <p class="hand-label">✋ Your Hand</p>
+          <div class="hand" id="my-hand"></div>
+        </div>
+
+      </div><!-- /game-main -->
+
+      <!-- RIGHT: Sidebar -->
+      <div class="game-sidebar">
+
+        <!-- UNO Action Buttons -->
+        <div class="sidebar-card">
+          <button class="btn btn-call-uno" id="btn-call-uno">📣 Call UNO!</button>
+          <button class="btn btn-challenge-uno" id="btn-challenge-uno">⚡ Challenge UNO</button>
+        </div>
+
+        <!-- Players List -->
+        <div class="sidebar-card">
+          <p class="sidebar-title">Players</p>
+          <ul class="player-list" id="game-player-list"></ul>
+        </div>
+
+        <!-- Activity Log -->
+        <div class="sidebar-card">
+          <p class="sidebar-title">Activity Log</p>
+          <div class="log-container" id="game-log"></div>
+        </div>
+
+      </div><!-- /game-sidebar -->
+    </div><!-- /game-grid -->
+  </div><!-- /game-screen -->
+</div><!-- /container -->
+
+<!-- =================== WILD COLOR PICKER MODAL =================== -->
 <div id="wild-modal" class="modal-overlay hidden">
   <div class="modal-content">
-    <h2>Select Color</h2>
-    <p class="modal-subtitle">Choose a color for the wild card</p>
+    <h2>Choose a Color</h2>
+    <p class="modal-subtitle">Pick the color for your wild card</p>
     <div class="color-picker-grid">
-      <button class="color-picker-btn red-btn" data-color="red">Red</button>
+      <button class="color-picker-btn red-btn"    data-color="red">Red</button>
       <button class="color-picker-btn yellow-btn" data-color="yellow">Yellow</button>
-      <button class="color-picker-btn green-btn" data-color="green">Green</button>
-      <button class="color-picker-btn blue-btn" data-color="blue">Blue</button>
+      <button class="color-picker-btn green-btn"  data-color="green">Green</button>
+      <button class="color-picker-btn blue-btn"   data-color="blue">Blue</button>
     </div>
   </div>
 </div>
 
-<!-- Game Over Modal -->
+<!-- =================== GAME OVER MODAL =================== -->
 <div id="game-over-modal" class="modal-overlay hidden">
   <div class="modal-content">
     <div class="trophy-icon">🏆</div>
-    <h2>Game Over</h2>
-    <p id="winner-announcement" class="winner-text">Player won the game!</p>
-    <button class="btn btn-primary hidden" id="btn-restart">Restart Game</button>
+    <h2>Game Over!</h2>
+    <p id="winner-announcement" class="winner-text">Someone won!</p>
+    <button class="btn btn-primary hidden" id="btn-restart">Play Again</button>
     <p id="restart-waiting-msg" class="waiting-msg">Waiting for host to restart...</p>
   </div>
 </div>
