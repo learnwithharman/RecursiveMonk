@@ -182,8 +182,9 @@ function getPublicGameState(room) {
     players: room.players.map((p) => ({
       id: p.id,
       name: p.name,
-      cardCount: room.game.hands[p.id].length,
+      cardCount: room.game.hands[p.id] ? room.game.hands[p.id].length : 0,
       calledUno: !!room.game.unoCalled[p.id],
+      disconnected: !!p.disconnected,
     })),
     logs: room.game.logs || [],
     pendingWild: !!room.game.pendingWild,
