@@ -1,92 +1,81 @@
-# RecursiveMonk — Dev Roadmap
+# RecursiveMonk — 30-Day Dev Roadmap
 
-Personal build plan. One small chunk at a time, ship something playable early.
-
----
-
-## Phase 1 — Foundation *(in progress)*
-
-| Task | Status |
-|------|--------|
-| Express + Socket.IO server | ✅ Done |
-| Create / join room with code | ✅ Done |
-| Lobby — player list, host badge | ✅ Done |
-| Host starts game (min 2 players) | ✅ Done |
-| Shuffle deck, deal 7 cards, show top card | ✅ Done |
-| Rejoin after disconnect | ⬜ Later |
+Personal day-by-day build plan. One small chunk at a time, shipping something playable and polished.
 
 ---
 
-## Phase 2 — Core Gameplay *(in progress)*
+## 📅 Completed Work
 
-| Task | Status |
-|------|--------|
-| Play a card (valid move check) | ✅ Done |
-| Draw card & auto-pass turn | ✅ Done |
-| Turn rotation (basic) | ✅ Done |
-| Turn rotation (Skip, Reverse effects) | ✅ Done |
-| Draw Two (+2 card effect) | ✅ Done |
-| Reshuffle draw pile when empty | ✅ Done |
+### **Day 1: Server Setup & Basic Socket Wiring** (May 25)
+- [x] Initialize Node.js Express server.
+- [x] Integrate Socket.IO for real-time multiplayer connections.
+- [x] Design room data structures to hold player metadata.
 
----
+### **Day 2: Room Creation & Lobby UI** (June 9)
+- [x] Create room with unique 6-character room codes.
+- [x] Join room code validation on socket endpoints.
+- [x] Lobby UI — list players in real time, display host badges, and enforce host start permissions.
 
-## Phase 3 — Special Rules
+### **Day 3: Shuffling, Dealing & Hand Display** (June 19)
+- [x] Generate full 108-card UNO deck (number cards, actions, wilds).
+- [x] Deal 7 starting cards to players and determine starting top card.
+- [x] Render player's private hand dynamically on the client.
 
-| Task | Status |
-|------|--------|
-| Wild — pick a color | ✅ Done |
-| Wild Draw Four (+4) | ✅ Done |
-| "UNO!" call + penalty | ✅ Done |
-| Win detection + round reset | ✅ Done |
+### **Day 4: Core Gameplay & Turn Rotation** (June 20)
+- [x] Validate playable cards (matching color, number, or wild card).
+- [x] Automate drawing from deck and passing turn if playable card is not drawn.
+- [x] Basic clockwise/counter-clockwise turn rotation mechanics.
 
----
+### **Day 5: Action Card Effects & Logger** (June 22)
+- [x] Implement Skip, Reverse, and Draw Two (+2) card effects.
+- [x] Add directional movement visual indicators (↻ / ↺) in the game header.
+- [x] Implement scrollable game activity log for auditing play events.
 
-## Phase 4 — Polish
-
-| Task | Status |
-|------|--------|
-| Proper UNO card design (oval, corners, center symbol) | ✅ Done |
-| Two-column game table layout | ✅ Done |
-| Opponent face-down card backs (stacked) | ✅ Done |
-| Card play + hand fan-in animations | ✅ Done |
-| Fixed error toast (works in any screen) | ✅ Done |
-| Mobile responsive layout (single-column on small screens) | ✅ Done |
-| Sound / emotes (optional) | ⬜ |
-| Error handling + edge cases (disconnect mid-game) | ⬜ |
+### **Day 6: Special Rules & UI Polish** (June 23)
+- [x] Implement Wild card color selector modal.
+- [x] Implement Wild Draw Four (+4) drawing and skipping logic.
+- [x] Add "UNO!" call logic, penalty draws, and call buttons.
+- [x] Visual redesign: Premium oval card styles, conic gradients, stacked card backs, card deal/play animations, and responsive mobile layouts.
 
 ---
 
-## Phase 5 — Deploy
+## 🚀 Active Development
 
-| Task | Status |
-|------|--------|
-| Deploy server (Render / Railway / VPS) | ⬜ |
-| Share link — anyone can join | ⬜ |
-
----
-
-## What I built today (Day 2)
-
-1. **Skip Card** — Playing a Skip card advances the turn by 2, bypassing the next player completely.
-2. **Reverse Card** — Flips the play direction (Clockwise ↔ Counter-clockwise). In a 2-player game, acts as a Skip (same player goes again).
-3. **Draw Two (+2)** — The next player draws 2 cards from the deck and their turn is skipped.
-4. **Starting Card Effects** — If a special card (Skip, Reverse, Draw Two) is the top card at game start, its effect applies immediately before the first turn.
-5. **drawFromDeck() helper** — Refactored card drawing logic into a shared function that auto-reshuffles the discard pile when the draw pile is empty.
-6. **Direction Indicator** — A live ↻/↺ indicator with animated color-coded glow shows the current play direction (Clockwise = green, Counter-Clockwise = red).
-7. **Activity Log** — A scrollable, color-coded log panel records every game event (plays, draws, skips, reverses, draw twos) with formatted human-readable messages.
+### **Day 7: Reconnection, Sounds & Emotes** (June 25 - *In Progress*)
+- [/] Reconnect/rejoin after browser refresh or disconnect (session restoration via `localStorage`).
+- [/] Mid-game disconnect handling (marking player offline, 30s pause timer, game resolution).
+- [/] Synthesized Web Audio sound effects for play, draw, UNO calls, and errors.
+- [/] Interactive quick emote reactions in sidebar with floating emoji animations.
 
 ---
 
-## What I built today (Day 3)
+## 📋 Future Roadmap
 
-1. **Proper UNO Card Design** — Cards now look like real UNO cards: rotated oval decoration, corner labels (top-left / bottom-right), large center symbol, gradient color backgrounds.
-2. **Wild Card 4-Color Design** — Wild cards use a conic-gradient for the classic 4-quadrant red/yellow/green/blue look.
-3. **Opponent Card Backs** — Other players' cards are shown as stacked face-down card backs (up to 10 visible, overlapping for depth).
-4. **Two-Column Game Layout** — Game screen now uses a proper table layout: play area on the left (opponents + center + hand), sidebar on the right (action buttons + player list + log).
-5. **Card Animations** — Hand cards fan in with staggered delays; the discard pile top card does a drop-in bounce animation every time a new card is played.
-6. **Game-Mode Container** — Container expands from 480px to 1080px when the game starts, then collapses back on return to lobby.
-7. **Fixed Error Toast** — Error messages now appear as a fixed toast at the top of the screen, visible in all screens including during gameplay.
-8. **Mobile Responsive** — On screens under 820px, the sidebar collapses into a 2-column grid below the play area. On small phones, everything stacks vertically.
+### **Week 2: Advanced Gameplay (Days 8–14)**
+- [ ] **Day 8:** Turn timer indicators (forcing inactive players to auto-draw/auto-pass).
+- [ ] **Day 9:** Sound toggle options (mute/unmute buttons in sidebar).
+- [ ] **Day 10:** Chat system extension (send typed messages in lobby/game).
+- [ ] **Day 11:** Custom rule toggles in lobby (e.g. Draw Two stacking, Jump-in play).
+- [ ] **Day 12:** Match statistics (win/loss ratios, cards played counter).
+- [ ] **Day 13:** Keyboard shortcuts (1-9 keys to play cards, D to draw).
+- [ ] **Day 14:** Interactive tutorial overlay for first-time players.
 
-Next session: Deploy to Render/Railway so anyone can join with a link.
+### **Week 3: Visual Polish & Performance (Days 15–21)**
+- [ ] **Day 15:** Smooth CSS table background texture (radial wood/felt felt-like gradients).
+- [ ] **Day 16:** Card sorting algorithms (sort by color or value in player's hand).
+- [ ] **Day 17:** Turn transition card-deal visual effects.
+- [ ] **Day 18:** Avatar customizations (selecting color/icon in lobby).
+- [ ] **Day 19:** Custom deck themes (classic, dark mode, vibrant neon).
+- [ ] **Day 20:** Performance profiling and socket frame optimizations.
+- [ ] **Day 21:** Playtest Alpha: multi-device testing (iOS, Android, desktop browsers) in LAN.
 
+### **Week 4: Deployment & Release (Days 22–30)**
+- [ ] **Day 22:** Docker configuration for server packaging.
+- [ ] **Day 23:** Deploy server to cloud (Render / Railway / VPS).
+- [ ] **Day 24:** Share link generation (one-click copy URL to auto-join lobby).
+- [ ] **Day 25:** SSL certificates setup and HTTPS verification.
+- [ ] **Day 26:** Database integration (storing active rooms and basic analytics).
+- [ ] **Day 27:** Health check endpoints and basic uptime monitoring.
+- [ ] **Day 28:** WhatsApp/Messenger quick-share links integration.
+- [ ] **Day 29:** Community feedback integration and minor layout adjustments.
+- [ ] **Day 30:** Official v1.0 Launch & release documentation.
