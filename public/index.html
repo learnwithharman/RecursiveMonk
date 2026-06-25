@@ -21,6 +21,14 @@
 
   <!-- =================== HOME SCREEN =================== -->
   <div id="home-screen">
+    <!-- Rejoin Game Banner -->
+    <div id="rejoin-container" class="card hidden" style="border-color: var(--c-yellow);">
+      <p class="waiting-msg" style="color: var(--c-yellow); font-weight: 600; text-transform: uppercase; margin-top: 0; margin-bottom: 0.25rem;">Active Session Found</p>
+      <p class="subtitle" id="rejoin-msg" style="margin-bottom: 1rem; font-size: 0.85rem;"></p>
+      <button class="btn btn-primary" id="btn-rejoin">Rejoin Game</button>
+      <button class="btn btn-secondary" id="btn-clear-session">Start Fresh</button>
+    </div>
+
     <div class="card">
       <label for="player-name">Your Name</label>
       <input id="player-name" type="text" placeholder="Enter your name" maxlength="20">
@@ -112,6 +120,18 @@
         <div class="sidebar-card">
           <p class="sidebar-title">Players</p>
           <ul class="player-list" id="game-player-list"></ul>
+        </div>
+
+        <!-- Quick Emotes React Card -->
+        <div class="sidebar-card">
+          <p class="sidebar-title">React</p>
+          <div class="emotes-container">
+            <button class="emote-btn" data-emote="😀">😀</button>
+            <button class="emote-btn" data-emote="🔥">🔥</button>
+            <button class="emote-btn" data-emote="😮">😮</button>
+            <button class="emote-btn" data-emote="😢">😢</button>
+            <button class="emote-btn" data-emote="👑">👑</button>
+          </div>
         </div>
 
         <!-- Activity Log -->
