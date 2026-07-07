@@ -132,6 +132,15 @@ function checkRejoinSession() {
 // Initialize session check
 checkRejoinSession();
 
+// Populate and auto-save name input
+const savedName = localStorage.getItem("recursivemonk_playerName");
+if (savedName) {
+  playerNameInput.value = savedName;
+}
+playerNameInput.addEventListener("input", () => {
+  localStorage.setItem("recursivemonk_playerName", playerNameInput.value.trim());
+});
+
 // =====================================================
 // CARD RENDERING
 // =====================================================
@@ -645,6 +654,66 @@ document.querySelectorAll(".emote-btn").forEach((btn) => {
     socket.emit("send-emote", { emote: btn.dataset.emote });
   });
 });
+
+// Focus Room Code input when Join Room card is clicked
+const btnJoinCard = document.getElementById("btn-join-card");
+if (btnJoinCard) {
+  btnJoinCard.addEventListener("click", () => {
+    roomCodeInput.focus();
+  });
+}
+
+// Owl SVG Interactive Pupil Mouse Tracking & Wink Hover state
+window.addEventListener("mousemove", (e) => {
+  const owlSvg = document.querySelector(".owl-svg");
+  if (!owlSvg) return;
+
+  const rect = owlSvg.getBoundingClientRect();
+  const center_x = rect.left + rect.width / 2;
+  const center_y = rect.top + rect.height / 2;
+
+  const dx = e.clientX - center_x;
+  const dy = e.clientY - center_y;
+  const angle = Math.atan2(dy, dx);
+  
+  const max_offset = 3.5;
+  const pupil_x = Math.cos(angle) * max_offset;
+  const pupil_y = Math.sin(angle) * max_offset;
+
+  const leftPupil = document.getElementById("left-pupil");
+  const rightPupil = document.getElementById("right-pupil");
+  
+  if (leftPupil) {
+    leftPupil.style.transform = `translate(${pupil_x}px, ${pupil_y}px)`;
+  }
+  if (rightPupil) {
+    rightPupil.style.transform = `translate(${pupil_x}px, ${pupil_y}px)`;
+  }
+});
+
+const logoContainer = document.querySelector(".hero-logo-container");
+if (logoContainer) {
+  const rightEyeGroup = document.getElementById("right-eye-group");
+  const rightWink = document.getElementById("right-wink");
+
+  logoContainer.addEventListener("mouseenter", () => {
+    if (rightEyeGroup && rightWink) {
+      rightEyeGroup.style.display = "block";
+      rightWink.style.display = "none";
+    }
+  });
+
+  logoContainer.addEventListener("mouseleave", () => {
+    if (rightEyeGroup && rightWink) {
+      rightEyeGroup.style.display = "none";
+      rightWink.style.display = "block";
+      
+      // Reset pupil position
+      const rightPupil = document.getElementById("right-pupil");
+      if (rightPupil) rightPupil.style.transform = "";
+    }
+  });
+}
 
 // =====================================================
 // SOCKET EVENTS
