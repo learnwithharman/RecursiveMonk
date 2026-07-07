@@ -15,33 +15,392 @@
 <!-- Global Error Toast -->
 <div id="error-box" class="error-toast hidden"></div>
 
-<div class="container">
-  <h1 class="app-title">RecursiveMonk</h1>
-  <p class="subtitle">Multiplayer UNO in your browser</p>
+<div class="container home-mode">
+  <!-- =================== APP HEADER =================== -->
+  <header class="app-header">
+    <div class="header-left">
+      <button class="header-btn" id="btn-how-to-play">
+        <span class="icon">❓</span> How to Play
+      </button>
+      <button class="header-btn" id="btn-tutorial">
+        <span class="icon">📖</span> Tutorial
+      </button>
+    </div>
+    <div class="header-right">
+      <button class="header-icon-btn" id="btn-toggle-sound" title="Toggle Sound">
+        <span class="icon" id="sound-icon">🔊</span>
+      </button>
+      <button class="header-icon-btn" id="btn-settings" title="Settings">
+        <span class="icon">⚙️</span>
+      </button>
+      <div class="profile-badge" id="profile-badge">
+        <div class="avatar-circle">
+          <span class="avatar-icon">👤</span>
+        </div>
+        <div class="profile-info">
+          <input type="text" id="player-name" class="header-name-input" value="RecursiveMonk" maxlength="20" title="Click to edit name">
+          <span class="status-indicator online">Online</span>
+        </div>
+      </div>
+    </div>
+  </header>
 
   <!-- =================== HOME SCREEN =================== -->
   <div id="home-screen">
+    <!-- Hero / Animated Owl SVG Logo -->
+    <div class="hero-logo-container">
+      <svg class="owl-svg" viewBox="0 0 200 200" width="160" height="160" xmlns="http://www.w3.org/2000/svg">
+        <!-- Outer Glow Defs -->
+        <defs>
+          <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ffd166" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="#0b0d19" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="eyeGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#fff8db"/>
+            <stop offset="60%" stop-color="#ffd166"/>
+            <stop offset="100%" stop-color="#f59e0b"/>
+          </radialGradient>
+          <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#2d1f10"/>
+            <stop offset="50%" stop-color="#1c1208"/>
+            <stop offset="100%" stop-color="#0c0702"/>
+          </linearGradient>
+          <linearGradient id="beakGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#ffd166"/>
+            <stop offset="100%" stop-color="#d97706"/>
+          </linearGradient>
+        </defs>
+        
+        <!-- Background Glow -->
+        <circle cx="100" cy="100" r="90" fill="url(#glowGrad)" />
+
+        <!-- Owl Body & Wings -->
+        <path d="M 60,150 C 40,110 50,70 100,70 C 150,70 160,110 140,150 C 130,165 70,165 60,150 Z" fill="url(#bodyGrad)" stroke="#0c0702" stroke-width="3" />
+        <path d="M 50,110 C 35,125 45,155 65,150" fill="none" stroke="#1c1208" stroke-width="4" stroke-linecap="round" />
+        <path d="M 150,110 C 165,125 155,155 135,150" fill="none" stroke="#1c1208" stroke-width="4" stroke-linecap="round" />
+        
+        <!-- Chest feathers -->
+        <path d="M 85,120 Q 100,125 115,120 M 80,130 Q 100,137 120,130 M 90,140 Q 100,145 110,140" fill="none" stroke="#3d2612" stroke-width="2" stroke-linecap="round" />
+
+        <!-- Head / Ears shape -->
+        <path d="M 50,90 C 50,55 70,40 100,47 C 130,40 150,55 150,90 C 150,120 130,125 100,125 C 70,125 50,120 50,90 Z" fill="url(#bodyGrad)" stroke="#0c0702" stroke-width="3" />
+        <!-- Ear tuft details -->
+        <path d="M 55,50 L 45,35 L 68,43" fill="url(#bodyGrad)" stroke="#0c0702" stroke-width="2.5" stroke-linejoin="round" />
+        <path d="M 145,50 L 155,35 L 132,43" fill="url(#bodyGrad)" stroke="#0c0702" stroke-width="2.5" stroke-linejoin="round" />
+
+        <!-- Eyebrows / Frames -->
+        <path d="M 45,82 Q 70,68 98,82" fill="none" stroke="#ffd166" stroke-width="4" stroke-linecap="round" />
+        <path d="M 155,82 Q 130,68 102,82" fill="none" stroke="#ffd166" stroke-width="4" stroke-linecap="round" />
+
+        <!-- Eye Rings/Sockets -->
+        <circle cx="70" cy="90" r="25" fill="#0c0702" stroke="#ffd166" stroke-width="1.5" />
+        <circle cx="130" cy="90" r="25" fill="#0c0702" stroke="#ffd166" stroke-width="1.5" />
+
+        <!-- Left Eye (Open/Blinking) -->
+        <g id="left-eye-group">
+          <circle cx="70" cy="90" r="22" fill="url(#eyeGrad)" />
+          <!-- Left Pupil (tracks mouse) -->
+          <g id="left-pupil" class="pupil-target">
+            <circle cx="70" cy="90" r="10" fill="#0f172a" />
+            <circle cx="73" cy="86" r="3.5" fill="#ffffff" />
+            <circle cx="66" cy="93" r="1.5" fill="#ffffff" opacity="0.7" />
+          </g>
+        </g>
+        <!-- Left Eyelid for Blinking -->
+        <path id="left-eyelid" d="M 48,90 Q 70,90 92,90 L 92,68 Q 70,68 48,68 Z" fill="url(#bodyGrad)" stroke="#0c0702" stroke-width="1" style="transform-origin: 70px 90px; transform: scaleY(0);" />
+
+        <!-- Right Eye (Winking by default, open on hover) -->
+        <g id="right-eye-group">
+          <circle cx="130" cy="90" r="22" fill="url(#eyeGrad)" />
+          <!-- Right Pupil -->
+          <g id="right-pupil" class="pupil-target">
+            <circle cx="130" cy="90" r="10" fill="#0f172a" />
+            <circle cx="133" cy="86" r="3.5" fill="#ffffff" />
+            <circle cx="126" cy="93" r="1.5" fill="#ffffff" opacity="0.7" />
+          </g>
+        </g>
+        <!-- Right Eye Wink Arc (default state) -->
+        <path id="right-wink" d="M 112,90 Q 130,105 148,90" fill="none" stroke="#ffd166" stroke-width="4.5" stroke-linecap="round" />
+        <!-- Right Eyelid for Blinking -->
+        <path id="right-eyelid" d="M 108,90 Q 130,90 152,90 L 152,68 Q 130,68 108,68 Z" fill="url(#bodyGrad)" stroke="#0c0702" stroke-width="1" style="transform-origin: 130px 90px; transform: scaleY(0);" />
+
+        <!-- Beak -->
+        <polygon points="94,92 106,92 100,108" fill="url(#beakGrad)" stroke="#0c0702" stroke-width="1.5" stroke-linejoin="round" />
+      </svg>
+      <h1 class="hero-title">RECURSIVEMONK</h1>
+      <p class="hero-tagline">
+        <span class="tag-create">CREATE.</span>
+        <span class="tag-connect">CONNECT.</span>
+        <span class="tag-play">PLAY.</span>
+      </p>
+    </div>
+
     <!-- Rejoin Game Banner -->
-    <div id="rejoin-container" class="card hidden" style="border-color: var(--c-yellow);">
+    <div id="rejoin-container" class="card hidden" style="border-color: var(--c-yellow); margin-bottom: 2rem;">
       <p class="waiting-msg" style="color: var(--c-yellow); font-weight: 600; text-transform: uppercase; margin-top: 0; margin-bottom: 0.25rem;">Active Session Found</p>
       <p class="subtitle" id="rejoin-msg" style="margin-bottom: 1rem; font-size: 0.85rem;"></p>
       <button class="btn btn-primary" id="btn-rejoin">Rejoin Game</button>
       <button class="btn btn-secondary" id="btn-clear-session">Start Fresh</button>
     </div>
 
-    <div class="card">
-      <label for="player-name">Your Name</label>
-      <input id="player-name" type="text" placeholder="Enter your name" maxlength="20">
+    <!-- 2-Column Landing Page Grid -->
+    <div class="home-grid">
+      <!-- Left Column: Actions -->
+      <div class="home-left">
+        <div class="hero-content">
+          <div class="promo-pill">
+            <span class="icon">⚡</span> MULTIPLAYER UNO EXPERIENCE
+          </div>
+          <h2 class="hero-promo-title">PLAY UNO.<br><span class="gradient-text">ANYTIME, ANYWHERE.</span></h2>
+          <p class="hero-promo-desc">Create a room, invite your friends, and enjoy the classic UNO game in real-time!</p>
+        </div>
 
-      <button class="btn btn-primary" id="btn-create">Create Room</button>
+        <div class="action-cards-grid">
+          <!-- Create Room Block -->
+          <button class="action-card-btn create-room" id="btn-create">
+            <div class="action-icon-circle">
+              <span class="icon">+</span>
+            </div>
+            <div class="action-card-info">
+              <span class="action-title">CREATE ROOM</span>
+              <span class="action-sub">Start a new game</span>
+            </div>
+          </button>
 
-      <p class="divider">— or join an existing room —</p>
+          <!-- Join Room Block -->
+          <div class="join-room-wrapper">
+            <button class="action-card-btn join-room" id="btn-join-card">
+              <div class="action-icon-circle">
+                <span class="icon">➔</span>
+              </div>
+              <div class="action-card-info">
+                <span class="action-title">JOIN ROOM</span>
+                <span class="action-sub">Enter Room Code</span>
+              </div>
+            </button>
+            <div class="code-input-container">
+              <input id="room-code-input" type="text" placeholder="ABC123" maxlength="6" style="text-transform:uppercase">
+              <button class="code-submit-btn" id="btn-join" title="Join Room">
+                <span class="icon">➔</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <label for="room-code-input">Room Code</label>
-      <input id="room-code-input" type="text" placeholder="ABC123" maxlength="6" style="text-transform:uppercase">
-      <button class="btn btn-secondary" id="btn-join">Join Room</button>
+      <!-- Right Column: Interactive Table Mockup -->
+      <div class="home-right">
+        <div class="table-mockup-container">
+          <!-- Outer Glowing Ring -->
+          <div class="table-outer-ring">
+            <!-- Game Table Circle -->
+            <div class="table-surface">
+              <!-- Center Logo -->
+              <div class="table-center-logo">uno</div>
+              
+              <!-- Discard Pile -->
+              <div class="mockup-discard-pile">
+                <!-- Red 5 card -->
+                <div class="uno-card red rotated-left">
+                  <span class="card-corner card-corner-top">5</span>
+                  <span class="card-center">5</span>
+                  <span class="card-corner card-corner-bottom">5</span>
+                </div>
+                <!-- Blue 5 card stacked -->
+                <div class="uno-card blue rotated-right">
+                  <span class="card-corner card-corner-top">5</span>
+                  <span class="card-center">5</span>
+                  <span class="card-corner card-corner-bottom">5</span>
+                </div>
+              </div>
+
+              <!-- Player Seats -->
+              <div class="mockup-seat seat-top">
+                <div class="seat-avatar">👩‍💼</div>
+                <div class="seat-details">
+                  <span class="seat-name">Alex</span>
+                  <span class="seat-cards">6 Cards</span>
+                </div>
+              </div>
+              <div class="mockup-seat seat-right">
+                <div class="seat-avatar">👩</div>
+                <div class="seat-details">
+                  <span class="seat-name">Sam</span>
+                  <span class="seat-cards">5 Cards</span>
+                </div>
+              </div>
+              <div class="mockup-seat seat-left seat-active">
+                <div class="seat-avatar">👨‍💻</div>
+                <div class="seat-details">
+                  <span class="seat-name">You</span>
+                  <span class="seat-cards">7 Cards</span>
+                </div>
+              </div>
+              <div class="mockup-seat seat-bottom-right">
+                <div class="seat-avatar">🧑</div>
+                <div class="seat-details">
+                  <span class="seat-name">Jamie</span>
+                  <span class="seat-cards">7 Cards</span>
+                </div>
+              </div>
+
+              <!-- Direction Indicator Arrows -->
+              <div class="mockup-arrows-overlay">
+                <div class="mockup-arrow arrow-left">➔</div>
+                <div class="mockup-arrow arrow-right">➔</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Fanned-out player cards overlay -->
+          <div class="mockup-hand-fan">
+            <div class="uno-card red fan-1">
+              <span class="card-corner card-corner-top">3</span>
+              <span class="card-center">3</span>
+            </div>
+            <div class="uno-card yellow fan-2">
+              <span class="card-corner card-corner-top">7</span>
+              <span class="card-center">7</span>
+            </div>
+            <div class="uno-card yellow fan-3">
+              <span class="card-corner card-corner-top">2</span>
+              <span class="card-center">2</span>
+            </div>
+            <div class="uno-card green fan-4">
+              <span class="card-corner card-corner-top">8</span>
+              <span class="card-center">8</span>
+            </div>
+            <div class="uno-card blue fan-5">
+              <span class="card-corner card-corner-top">1</span>
+              <span class="card-center">1</span>
+            </div>
+            <div class="uno-card green fan-6">
+              <span class="card-corner card-corner-top">0</span>
+              <span class="card-center">0</span>
+            </div>
+            <div class="uno-card wild fan-7">
+              <span class="card-corner card-corner-top">★</span>
+              <span class="card-center">★</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature Highlights Section -->
+    <div class="features-highlights">
+      <div class="feature-badge-card">
+        <div class="feature-icon-circle purple">👥</div>
+        <div class="feature-text">
+          <h4>Real-time Multiplayer</h4>
+          <p>Play with friends instantly</p>
+        </div>
+      </div>
+      <div class="feature-badge-card">
+        <div class="feature-icon-circle blue">⚡</div>
+        <div class="feature-text">
+          <h4>Smooth Gameplay</h4>
+          <p>Fast, lag-free experience</p>
+        </div>
+      </div>
+      <div class="feature-badge-card">
+        <div class="feature-icon-circle pink">☠️</div>
+        <div class="feature-text">
+          <h4>Action Packed</h4>
+          <p>All UNO rules & action cards</p>
+        </div>
+      </div>
+      <div class="feature-badge-card">
+        <div class="feature-icon-circle green">📱</div>
+        <div class="feature-text">
+          <h4>Cross-Platform</h4>
+          <p>Play on any device</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Panels Grid -->
+    <div class="home-bottom-grid">
+      <!-- Game Features -->
+      <div class="bottom-panel-card features-panel">
+        <h3 class="panel-title">GAME FEATURES</h3>
+        <div class="panel-content flex-row">
+          <ul class="features-list">
+            <li><span class="checkmark">✔</span> 108 Custom UNO Cards</li>
+            <li><span class="checkmark">✔</span> Real-time Chat & Emotes</li>
+            <li><span class="checkmark">✔</span> Action Card Effects</li>
+            <li><span class="checkmark">✔</span> UNO! Call & Penalties</li>
+            <li><span class="checkmark">✔</span> Reconnect & Rejoin</li>
+            <li><span class="checkmark">✔</span> And much more...</li>
+          </ul>
+          <div class="uno-card card-back rotate-mock">
+            <span class="card-back-logo">UNO</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="bottom-panel-card activity-panel">
+        <h3 class="panel-title">RECENT ACTIVITY</h3>
+        <div class="panel-content activity-feed">
+          <div class="activity-item">
+            <span class="activity-avatar">👩‍💼</span>
+            <div class="activity-desc">
+              <span class="activity-text"><strong>Alex</strong> played <span class="card-label yellow">Reverse</span></span>
+              <span class="activity-time">2s ago</span>
+            </div>
+          </div>
+          <div class="activity-item">
+            <span class="activity-avatar">👩</span>
+            <div class="activity-desc">
+              <span class="activity-text"><strong>Sam</strong> drew <span class="card-label blue">2 cards</span></span>
+              <span class="activity-time">5s ago</span>
+            </div>
+          </div>
+          <div class="activity-item">
+            <span class="activity-avatar">🧑</span>
+            <div class="activity-desc">
+              <span class="activity-text"><strong>Jamie</strong> called <span class="card-label red">UNO!</span></span>
+              <span class="activity-time">10s ago</span>
+            </div>
+          </div>
+          <div class="activity-item">
+            <span class="activity-avatar">👨‍💻</span>
+            <div class="activity-desc">
+              <span class="activity-text"><strong>You</strong> played <span class="card-label wild">Wild Draw Four</span></span>
+              <span class="activity-time">12s ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Emotes -->
+      <div class="bottom-panel-card emotes-panel">
+        <h3 class="panel-title">QUICK EMOTES</h3>
+        <div class="panel-content emotes-grid">
+          <button class="emote-preview-btn">😂</button>
+          <button class="emote-preview-btn">😎</button>
+          <button class="emote-preview-btn">😮</button>
+          <button class="emote-preview-btn">🔥</button>
+          <button class="emote-preview-btn">👏</button>
+          <button class="emote-preview-btn">👍</button>
+        </div>
+      </div>
+
+      <!-- Game Log -->
+      <div class="bottom-panel-card log-panel">
+        <div class="panel-content log-mock-row">
+          <div class="log-mock-text">
+            <h3 class="panel-title">GAME LOG</h3>
+            <p>View full game activity</p>
+          </div>
+          <button class="log-arrow-btn">➔</button>
+        </div>
+      </div>
     </div>
   </div>
+
 
   <!-- =================== LOBBY SCREEN =================== -->
   <div id="lobby-screen" class="hidden">
