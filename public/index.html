@@ -407,10 +407,25 @@
     <div class="card">
       <p class="waiting-msg">Share this code with friends</p>
       <div class="room-code" id="room-code-display">------</div>
+      <!-- Share Link Button -->
+      <button class="btn btn-share" id="btn-share-link">
+        <span class="icon">🔗</span> Copy Invite Link
+      </button>
       <ul class="player-list" id="player-list"></ul>
       <p class="waiting-msg" id="player-count">1 / 10 players</p>
       <button class="btn btn-primary hidden" id="btn-start">Start Game</button>
     </div>
+
+    <!-- Lobby Chat -->
+    <div class="card lobby-chat-card">
+      <p class="sidebar-title" style="padding-bottom:0.5rem; border-bottom:1px solid var(--border); margin-bottom:0.5rem;">💬 Chat</p>
+      <div class="chat-messages" id="lobby-chat-messages"></div>
+      <div class="chat-input-row">
+        <input type="text" id="lobby-chat-input" class="chat-input" placeholder="Say something..." maxlength="200" autocomplete="off">
+        <button class="chat-send-btn" id="lobby-chat-send">➔</button>
+      </div>
+    </div>
+
     <button class="btn btn-secondary" id="btn-leave">Leave Room</button>
   </div>
 
@@ -425,6 +440,14 @@
         <span id="direction-text" class="direction-text">Clockwise</span>
       </div>
       <div id="turn-info" class="turn-info-pill">Waiting...</div>
+      <!-- Turn Timer -->
+      <div id="turn-timer-wrap" class="turn-timer-wrap hidden">
+        <svg class="timer-ring" viewBox="0 0 36 36" width="36" height="36">
+          <circle class="timer-ring-bg" cx="18" cy="18" r="15.9155" />
+          <circle class="timer-ring-fill" id="timer-ring-fill" cx="18" cy="18" r="15.9155" />
+        </svg>
+        <span id="turn-timer-count" class="timer-count">30</span>
+      </div>
     </div>
 
     <!-- Game Grid -->
@@ -499,6 +522,16 @@
           <div class="log-container" id="game-log"></div>
         </div>
 
+        <!-- In-Game Chat -->
+        <div class="sidebar-card">
+          <p class="sidebar-title">💬 Chat</p>
+          <div class="chat-messages" id="game-chat-messages"></div>
+          <div class="chat-input-row">
+            <input type="text" id="game-chat-input" class="chat-input" placeholder="Say something..." maxlength="200" autocomplete="off">
+            <button class="chat-send-btn" id="game-chat-send">➔</button>
+          </div>
+        </div>
+
       </div><!-- /game-sidebar -->
     </div><!-- /game-grid -->
   </div><!-- /game-screen -->
@@ -526,6 +559,98 @@
     <p id="winner-announcement" class="winner-text">Someone won!</p>
     <button class="btn btn-primary hidden" id="btn-restart">Play Again</button>
     <p id="restart-waiting-msg" class="waiting-msg">Waiting for host to restart...</p>
+  </div>
+</div>
+
+<!-- =================== HOW TO PLAY MODAL =================== -->
+<div id="how-to-play-modal" class="modal-overlay hidden">
+  <div class="modal-content modal-wide">
+    <button class="modal-close-btn" id="close-how-to-play">✕</button>
+    <h2>🃏 How to Play UNO</h2>
+    <p class="modal-subtitle">Match cards by color or number. First to empty their hand wins!</p>
+    <div class="rules-grid">
+      <div class="rule-card">
+        <div class="rule-icon red-icon">🎯</div>
+        <h4>Objective</h4>
+        <p>Be the first player to get rid of all your cards. When you have 1 card left, shout UNO!</p>
+      </div>
+      <div class="rule-card">
+        <div class="rule-icon blue-icon">🔄</div>
+        <h4>Playing Cards</h4>
+        <p>Play a card that matches the top card by <strong>color</strong> or <strong>number/symbol</strong>. Wild cards can be played any time.</p>
+      </div>
+      <div class="rule-card">
+        <div class="rule-icon yellow-icon">⊘</div>
+        <h4>Skip</h4>
+        <p>The next player loses their turn.</p>
+      </div>
+      <div class="rule-card">
+        <div class="rule-icon green-icon">⇆</div>
+        <h4>Reverse</h4>
+        <p>Reverses the direction of play. In 2-player games, acts as a Skip.</p>
+      </div>
+      <div class="rule-card">
+        <div class="rule-icon red-icon">+2</div>
+        <h4>Draw Two</h4>
+        <p>The next player draws 2 cards and loses their turn.</p>
+      </div>
+      <div class="rule-card">
+        <div class="rule-icon wild-icon">★</div>
+        <h4>Wild</h4>
+        <p>Choose any color to continue play. Can be played on any card.</p>
+      </div>
+      <div class="rule-card">
+        <div class="rule-icon wild-icon">+4</div>
+        <h4>Wild Draw Four</h4>
+        <p>Choose a color AND the next player draws 4 cards and loses their turn.</p>
+      </div>
+      <div class="rule-card">
+        <div class="rule-icon red-icon">📣</div>
+        <h4>UNO! Call</h4>
+        <p>Press <strong>Call UNO!</strong> when you have 1 card. Fail to call it and another player can challenge you to draw 2 penalty cards!</p>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="close-how-to-play-btn" style="margin-top:1rem;">Got it!</button>
+  </div>
+</div>
+
+<!-- =================== TUTORIAL MODAL =================== -->
+<div id="tutorial-modal" class="modal-overlay hidden">
+  <div class="modal-content modal-wide">
+    <button class="modal-close-btn" id="close-tutorial">✕</button>
+    <h2>📖 Quick Start Tutorial</h2>
+    <p class="modal-subtitle">Get up to speed in 4 easy steps</p>
+    <div class="tutorial-steps">
+      <div class="tutorial-step">
+        <div class="step-number">1</div>
+        <div class="step-body">
+          <h4>Create or Join a Room</h4>
+          <p>Click <strong>Create Room</strong> to start a game, or enter a 6-character code and click <strong>Join Room</strong> to join a friend's game.</p>
+        </div>
+      </div>
+      <div class="tutorial-step">
+        <div class="step-number">2</div>
+        <div class="step-body">
+          <h4>Share the Link</h4>
+          <p>In the lobby, click <strong>Copy Invite Link</strong> and send it to friends. They'll land straight in your room.</p>
+        </div>
+      </div>
+      <div class="tutorial-step">
+        <div class="step-number">3</div>
+        <div class="step-body">
+          <h4>Play Your Turn</h4>
+          <p>When it's your turn, click a card from your hand to play it. If you can't play, click the <strong>Draw Pile</strong> to draw a card.</p>
+        </div>
+      </div>
+      <div class="tutorial-step">
+        <div class="step-number">4</div>
+        <div class="step-body">
+          <h4>Win the Game!</h4>
+          <p>Empty your hand to win. Remember to call <strong>UNO!</strong> when you have only 1 card left — or face a 2-card penalty!</p>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="close-tutorial-btn" style="margin-top:1rem;">Let's Play!</button>
   </div>
 </div>
 
