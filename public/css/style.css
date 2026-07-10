@@ -1935,3 +1935,317 @@ body {
   }
 }
 
+/* =====================================================
+   SHARE LINK BUTTON
+   ===================================================== */
+.btn-share {
+  background: linear-gradient(135deg, #0ea5e9, #0369a1);
+  color: #fff;
+  box-shadow: 0 4px 18px rgba(14, 165, 233, 0.25);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-share:hover:not(:disabled) {
+  box-shadow: 0 6px 24px rgba(14, 165, 233, 0.45);
+}
+
+.btn-share.copied {
+  background: linear-gradient(135deg, #10b981, #047857);
+  box-shadow: 0 4px 18px rgba(16, 185, 129, 0.35);
+}
+
+/* =====================================================
+   TURN TIMER (SVG Ring)
+   ===================================================== */
+.turn-timer-wrap {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.timer-ring {
+  transform: rotate(-90deg);
+}
+
+.timer-ring-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 3;
+}
+
+.timer-ring-fill {
+  fill: none;
+  stroke: var(--c-green);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1s linear, stroke 0.5s ease;
+}
+
+.timer-ring-fill.warning { stroke: var(--c-yellow); }
+.timer-ring-fill.danger  { stroke: var(--accent); }
+
+.timer-count {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 900;
+  color: var(--text);
+  pointer-events: none;
+}
+
+/* =====================================================
+   CHAT PANEL
+   ===================================================== */
+.lobby-chat-card {
+  padding: 0.9rem !important;
+}
+
+.chat-messages {
+  max-height: 160px;
+  overflow-y: auto;
+  background: var(--bg-input);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #94a3b8;
+  scrollbar-width: thin;
+  scrollbar-color: #334155 var(--bg-input);
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  min-height: 72px;
+}
+
+.chat-messages::-webkit-scrollbar       { width: 4px; }
+.chat-messages::-webkit-scrollbar-track { background: var(--bg-input); }
+.chat-messages::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+
+.chat-message {
+  animation: slideIn 0.18s ease-out;
+}
+
+.chat-message .chat-sender {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.chat-message .chat-sender.me {
+  color: var(--accent);
+}
+
+.chat-empty {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-style: italic;
+  text-align: center;
+  margin: auto;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.chat-input {
+  flex: 1;
+  margin: 0 !important;
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.82rem !important;
+  background: var(--bg-input) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-radius: 8px !important;
+  color: var(--text) !important;
+}
+
+.chat-input:focus {
+  border-color: rgba(14, 165, 233, 0.5) !important;
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.15) !important;
+}
+
+.chat-send-btn {
+  background: var(--accent);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.chat-send-btn:hover {
+  background: #f43f5e;
+  transform: scale(1.05);
+}
+
+/* =====================================================
+   WIDE MODAL (How to Play / Tutorial)
+   ===================================================== */
+.modal-wide {
+  max-width: 680px !important;
+  width: 95vw !important;
+  text-align: left !important;
+  max-height: 88vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #334155 var(--bg-panel);
+}
+
+.modal-wide h2 {
+  text-align: center;
+}
+
+.modal-wide .modal-subtitle {
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.modal-content {
+  position: relative;
+}
+
+.modal-close-btn:hover {
+  background: rgba(255,255,255,0.14);
+  color: var(--text);
+}
+
+/* Rules Grid */
+.rules-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 480px) {
+  .rules-grid { grid-template-columns: 1fr; }
+}
+
+.rule-card {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.rule-card h4 {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.rule-card p {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.rule-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 900;
+  margin-bottom: 0.2rem;
+}
+
+.red-icon    { background: rgba(230, 57, 70, 0.15); color: var(--c-red); }
+.blue-icon   { background: rgba(17, 138, 178, 0.15); color: var(--c-blue); }
+.yellow-icon { background: rgba(255, 209, 102, 0.15); color: var(--c-yellow); }
+.green-icon  { background: rgba(6, 214, 160, 0.15); color: var(--c-green); }
+.wild-icon   {
+  background: conic-gradient(from 0deg, rgba(230,57,70,0.3) 0deg 90deg, rgba(255,209,102,0.3) 90deg 180deg, rgba(6,214,160,0.3) 180deg 270deg, rgba(17,138,178,0.3) 270deg 360deg);
+  color: #fff;
+}
+
+/* Tutorial Steps */
+.tutorial-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.tutorial-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  transition: border-color 0.2s ease;
+}
+
+.tutorial-step:hover {
+  border-color: rgba(255,255,255,0.12);
+}
+
+.step-number {
+  min-width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 900;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.step-body h4 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.3rem;
+}
+
+.step-body p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
