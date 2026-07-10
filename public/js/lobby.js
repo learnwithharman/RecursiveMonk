@@ -27,13 +27,41 @@ const rejoinMsg       = document.getElementById("rejoin-msg");
 const btnRejoin      = document.getElementById("btn-rejoin");
 const btnClearSession = document.getElementById("btn-clear-session");
 
+// Chat references
+const lobbyChatMessages = document.getElementById("lobby-chat-messages");
+const lobbyChatInput    = document.getElementById("lobby-chat-input");
+const lobbyChatSend     = document.getElementById("lobby-chat-send");
+const gameChatMessages  = document.getElementById("game-chat-messages");
+const gameChatInput     = document.getElementById("game-chat-input");
+const gameChatSend      = document.getElementById("game-chat-send");
+
 let mySocketId = null;
 let currentRoom = null;
 let lastLogCount = 0;
 
+// Turn timer state
+let turnTimerInterval = null;
+let turnTimerSeconds  = 0;
+const TURN_DURATION   = 30; // seconds, must match server
+
 socket.on("connect", () => {
   mySocketId = socket.id;
 });
+
+// =====================================================
+// URL PARAM: Auto-fill room code from ?room=CODE
+// =====================================================
+(function checkUrlRoomParam() {
+  const params = new URLSearchParams(window.location.search);
+  const roomParam = params.get("room");
+  if (roomParam && roomCodeInput) {
+    roomCodeInput.value = roomParam.toUpperCase();
+    // Scroll home-left into view so the join input is visible
+    const joinWrapper = document.querySelector(".join-room-wrapper");
+    if (joinWrapper) joinWrapper.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+})();
+
 
 // =====================================================
 // UTILITIES
@@ -347,7 +375,8 @@ function getLogClass(type) {
   if (type === "draw2" || type === "wild4")         return "log-item log-draw2";
   if (type === "uno-call" || type === "uno-penalty") return "log-item log-uno";
   if (type === "player-disconnect" || type === "player-timeout") return "log-item log-uno";
-  if (type === "player-reconnect")                  return "log-item log-reverse";
+  if (type === "player-timeout-draw")                            return "log-item log-skip";
+  if (type === "player-reconnect")                               return "log-item log-reverse";
   return "log-item log-normal";
 }
 
@@ -392,6 +421,8 @@ function formatLogItem(log) {
       return `⚠️ <strong>${log.player}</strong> disconnected! Waiting 30s to reconnect...`;
     case "player-timeout":
       return `❌ <strong>${log.player}</strong> timed out and left the game.`;
+    case "player-timeout-draw":
+      return `⏱️ <strong>${log.player}</strong> ran out of time — a card was drawn automatically.`;
     case "player-reconnect":
       return `✅ <strong>${log.player}</strong> reconnected!`;
     default:
@@ -431,6 +462,13 @@ function renderGame(gameState, hand) {
   const turnInfoEl  = document.getElementById("turn-info");
   turnInfoEl.textContent = isMyTurn ? "⚡ Your turn!" : `${gameState.currentPlayerName}'s turn`;
   turnInfoEl.className   = isMyTurn ? "turn-info-pill my-turn" : "turn-info-pill";
+
+  // Restart the local countdown timer on every state update while game is active
+  if (gameState.status === "playing" && !gameState.pendingWild && !gameState.winner) {
+    startTurnTimer(isMyTurn);
+  } else {
+    stopTurnTimer();
+  }
 
   const drawPileEl = document.getElementById("draw-pile");
   drawPileEl.style.opacity       = isMyTurn ? "1"     : "0.5";
@@ -551,7 +589,55 @@ function backToHome() {
   gameScreen.classList.add("hidden");
   homeScreen.classList.remove("hidden");
   appContainer.classList.remove("game-mode");
+  stopTurnTimer();
 }
+
+// =====================================================
+// TURN TIMER
+// =====================================================
+
+function startTurnTimer(isMyTurn) {
+  stopTurnTimer();
+
+  const wrap      = document.getElementById("turn-timer-wrap");
+  const fillEl    = document.getElementById("timer-ring-fill");
+  const countEl   = document.getElementById("turn-timer-count");
+  if (!wrap || !fillEl || !countEl) return;
+
+  const circumference = 100; // matches stroke-dasharray
+  turnTimerSeconds = TURN_DURATION;
+
+  wrap.classList.remove("hidden");
+  countEl.textContent = turnTimerSeconds;
+  fillEl.className = "timer-ring-fill";
+  fillEl.style.strokeDashoffset = "0";
+
+  turnTimerInterval = setInterval(() => {
+    turnTimerSeconds--;
+    countEl.textContent = Math.max(0, turnTimerSeconds);
+
+    // Shrink the ring proportionally
+    const offset = circumference * (1 - turnTimerSeconds / TURN_DURATION);
+    fillEl.style.strokeDashoffset = offset;
+
+    // Color transitions
+    fillEl.classList.remove("warning", "danger");
+    if (turnTimerSeconds <= 10) fillEl.classList.add("danger");
+    else if (turnTimerSeconds <= 20) fillEl.classList.add("warning");
+
+    if (turnTimerSeconds <= 0) stopTurnTimer();
+  }, 1000);
+}
+
+function stopTurnTimer() {
+  if (turnTimerInterval) {
+    clearInterval(turnTimerInterval);
+    turnTimerInterval = null;
+  }
+  const wrap = document.getElementById("turn-timer-wrap");
+  if (wrap) wrap.classList.add("hidden");
+}
+
 
 // =====================================================
 // EMOTE REACTIONS UI VISUAL EFFECTS
@@ -663,6 +749,55 @@ if (btnJoinCard) {
   });
 }
 
+// =====================================================
+// SHARE LINK BUTTON
+// =====================================================
+
+function setupShareButton(roomCode) {
+  const btn = document.getElementById("btn-share-link");
+  if (!btn) return;
+  btn.onclick = () => {
+    const url = `${location.origin}${location.pathname}?room=${roomCode}`;
+    navigator.clipboard.writeText(url).then(() => {
+      btn.innerHTML = '<span class="icon">✅</span> Link Copied!';
+      btn.classList.add("copied");
+      setTimeout(() => {
+        btn.innerHTML = '<span class="icon">🔗</span> Copy Invite Link';
+        btn.classList.remove("copied");
+      }, 2500);
+    }).catch(() => {
+      // Fallback for non-HTTPS contexts
+      prompt("Copy this link:", `${location.origin}${location.pathname}?room=${roomCode}`);
+    });
+  };
+}
+
+// =====================================================
+// HOW TO PLAY & TUTORIAL MODALS
+// =====================================================
+
+const howToPlayModal = document.getElementById("how-to-play-modal");
+const tutorialModal  = document.getElementById("tutorial-modal");
+
+function openModal(el) { el && el.classList.remove("hidden"); }
+function closeModal(el) { el && el.classList.add("hidden"); }
+
+document.getElementById("btn-how-to-play").addEventListener("click", () => openModal(howToPlayModal));
+document.getElementById("btn-tutorial").addEventListener("click",    () => openModal(tutorialModal));
+
+document.getElementById("close-how-to-play").addEventListener("click",     () => closeModal(howToPlayModal));
+document.getElementById("close-how-to-play-btn").addEventListener("click", () => closeModal(howToPlayModal));
+document.getElementById("close-tutorial").addEventListener("click",         () => closeModal(tutorialModal));
+document.getElementById("close-tutorial-btn").addEventListener("click",      () => closeModal(tutorialModal));
+
+// Close on backdrop click
+[howToPlayModal, tutorialModal].forEach(modal => {
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal(modal);
+  });
+});
+
+
 // Owl SVG Interactive Pupil Mouse Tracking & Wink Hover state
 window.addEventListener("mousemove", (e) => {
   const owlSvg = document.querySelector(".owl-svg");
@@ -690,6 +825,54 @@ window.addEventListener("mousemove", (e) => {
     rightPupil.style.transform = `translate(${pupil_x}px, ${pupil_y}px)`;
   }
 });
+
+// =====================================================
+// CHAT
+// =====================================================
+
+function appendChatMessage(containerEl, senderName, text, isMe) {
+  // Remove empty placeholder if present
+  const placeholder = containerEl.querySelector(".chat-empty");
+  if (placeholder) placeholder.remove();
+
+  const msgEl = document.createElement("div");
+  msgEl.className = "chat-message";
+  const senderEl = document.createElement("span");
+  senderEl.className = isMe ? "chat-sender me" : "chat-sender";
+  senderEl.textContent = senderName + ": ";
+  const textEl = document.createElement("span");
+  textEl.className = "chat-text";
+  textEl.textContent = text;
+  msgEl.appendChild(senderEl);
+  msgEl.appendChild(textEl);
+  containerEl.appendChild(msgEl);
+  containerEl.scrollTop = containerEl.scrollHeight;
+}
+
+function sendChat(inputEl, containers) {
+  const text = inputEl.value.trim();
+  if (!text) return;
+  socket.emit("send-chat", { text });
+  inputEl.value = "";
+}
+
+if (lobbyChatSend) {
+  lobbyChatSend.addEventListener("click", () => sendChat(lobbyChatInput, [lobbyChatMessages, gameChatMessages]));
+}
+if (lobbyChatInput) {
+  lobbyChatInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") sendChat(lobbyChatInput, [lobbyChatMessages, gameChatMessages]);
+  });
+}
+if (gameChatSend) {
+  gameChatSend.addEventListener("click", () => sendChat(gameChatInput, [lobbyChatMessages, gameChatMessages]));
+}
+if (gameChatInput) {
+  gameChatInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") sendChat(gameChatInput, [lobbyChatMessages, gameChatMessages]);
+  });
+}
+
 
 const logoContainer = document.querySelector(".hero-logo-container");
 if (logoContainer) {
@@ -730,8 +913,10 @@ socket.on("room-joined", (data) => {
     }
   }
   renderLobby(room);
+  setupShareButton(room.code);
   rejoinContainer.classList.add("hidden");
 });
+
 
 socket.on("room-updated", renderLobby);
 socket.on("room-error",   showError);
@@ -769,3 +954,29 @@ socket.on("game-updated", (gameState) => {
   latestGameState = gameState;
   render();
 });
+
+// Chat received
+socket.on("chat-message", ({ senderName, text, senderId }) => {
+  const isMe = senderId === mySocketId;
+  if (lobbyChatMessages) appendChatMessage(lobbyChatMessages, senderName, text, isMe);
+  if (gameChatMessages)  appendChatMessage(gameChatMessages,  senderName, text, isMe);
+});
+
+// Timer received from server
+socket.on("turn-timer", ({ seconds }) => {
+  // re-sync client timer to server's reported seconds remaining
+  const fillEl  = document.getElementById("timer-ring-fill");
+  const countEl = document.getElementById("turn-timer-count");
+  const wrap    = document.getElementById("turn-timer-wrap");
+  if (!wrap || !fillEl || !countEl) return;
+
+  wrap.classList.remove("hidden");
+  turnTimerSeconds = seconds;
+  countEl.textContent = seconds;
+  const offset = 100 * (1 - seconds / TURN_DURATION);
+  fillEl.style.strokeDashoffset = offset;
+  fillEl.classList.remove("warning", "danger");
+  if (seconds <= 10)      fillEl.classList.add("danger");
+  else if (seconds <= 20) fillEl.classList.add("warning");
+});
+
