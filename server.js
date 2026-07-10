@@ -27,6 +27,49 @@ const io = new Server(server);
 
 app.use(express.static("public"));
 
+const TURN_DURATION_MS = 30000; // 30 seconds
+const roomTimers = new Map(); // roomCode -> { timeout, startedAt }
+
+function clearRoomTimer(roomCode) {
+  const t = roomTimers.get(roomCode);
+  if (t) {
+    clearTimeout(t.timeout);
+    roomTimers.delete(roomCode);
+  }
+}
+
+function startRoomTimer(room) {
+  clearRoomTimer(room.code);
+  if (room.status !== "playing" || !room.game || room.game.pendingWild || room.game.winner) return;
+
+  const startedAt = Date.now();
+  const activePlayer = room.players[room.game.currentTurn];
+  if (!activePlayer) return;
+
+  // Broadcast the timer start to all clients
+  io.to(room.code).emit("turn-timer", { seconds: TURN_DURATION_MS / 1000 });
+
+  const timeout = setTimeout(() => {
+    roomTimers.delete(room.code);
+    // Make sure the same player is still active
+    const currentActive = room.players[room.game.currentTurn];
+    if (!currentActive || currentActive.id !== activePlayer.id) return;
+    if (room.status !== "playing" || !room.game || room.game.winner) return;
+
+    // Auto-draw a card for the timed-out player
+    const result = drawCard(room, activePlayer.id);
+    if (!result.error) {
+      if (!room.game.logs) room.game.logs = [];
+      room.game.logs.push({ type: "player-timeout-draw", player: activePlayer.name });
+      if (room.game.logs.length > 15) room.game.logs.shift();
+    }
+    broadcastGame(room);
+  }, TURN_DURATION_MS);
+
+  roomTimers.set(room.code, { timeout, startedAt });
+}
+
+
 function broadcastRoom(room) {
   io.to(room.code).emit("room-updated", getPublicRoom(room));
 }
@@ -36,7 +79,10 @@ function broadcastGame(room) {
     io.to(player.id).emit("your-hand", getPlayerHand(room, player.id));
   });
   io.to(room.code).emit("game-updated", getPublicGameState(room));
+  // Restart turn timer after every game state broadcast
+  startRoomTimer(room);
 }
+
 
 function handlePlayerLeft(room, playerId, playerName) {
   if (room.status === "playing" && room.game) {
@@ -258,6 +304,21 @@ io.on("connection", (socket) => {
     io.to(room.code).emit("emote-received", { playerId: socket.id, playerName: player.name, emote });
   });
 
+  socket.on("send-chat", ({ text }) => {
+    const room = getRoomByPlayer(socket.id);
+    if (!room) return;
+    const player = room.players.find((p) => p.id === socket.id);
+    if (!player) return;
+    const safeText = (text || "").toString().trim().slice(0, 200);
+    if (!safeText) return;
+    io.to(room.code).emit("chat-message", {
+      senderName: player.name,
+      text: safeText,
+      senderId: socket.id,
+    });
+  });
+
+
   socket.on("disconnect", () => {
     const room = getRoomByPlayer(socket.id);
     if (!room) return;
@@ -286,6 +347,7 @@ io.on("connection", (socket) => {
       const updatedRoom = leaveRoom(timedOutPlayer.id);
 
       if (updatedRoom) {
+        clearRoomTimer(updatedRoom.code);
         handlePlayerLeft(updatedRoom, timedOutPlayer.id, timedOutPlayer.name);
       }
     }, timeoutDuration);
@@ -295,3 +357,4 @@ io.on("connection", (socket) => {
 server.listen(3000, () => {
   console.log("Server running on http://localhost:3000");
 });
+
