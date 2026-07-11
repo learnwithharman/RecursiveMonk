@@ -38,6 +38,7 @@ const gameChatSend      = document.getElementById("game-chat-send");
 let mySocketId = null;
 let currentRoom = null;
 let lastLogCount = 0;
+let sortBy = localStorage.getItem("recursivemonk_sortBy") || "none";
 
 // Turn timer state
 let turnTimerInterval = null;
@@ -78,6 +79,25 @@ function getName() {
   return playerNameInput.value.trim() || "Player";
 }
 
+function updateMyProfileBadge() {
+  const name = localStorage.getItem("recursivemonk_playerName") || "RecursiveMonk";
+  const avatar = localStorage.getItem("recursivemonk_playerAvatar") || "👤";
+  const color = localStorage.getItem("recursivemonk_playerColor") || "#e2e8f0";
+  
+  const headerNameInput = document.getElementById("player-name");
+  if (headerNameInput) headerNameInput.value = name;
+  
+  const avatarIcon = document.querySelector(".avatar-circle .avatar-icon");
+  if (avatarIcon) {
+    avatarIcon.textContent = avatar === "owl" ? "🦉" : avatar;
+  }
+  
+  const avatarCircle = document.querySelector(".avatar-circle");
+  if (avatarCircle) {
+    avatarCircle.style.background = `linear-gradient(135deg, ${color}, rgba(0, 0, 0, 0.4))`;
+  }
+}
+
 // =====================================================
 // AUDIO EFFECTS (Web Audio API Synthesizer)
 // =====================================================
@@ -86,6 +106,9 @@ let audioCtx = null;
 
 function playSound(type) {
   try {
+    const soundEnabled = localStorage.getItem("recursivemonk_soundEnabled") !== "false";
+    if (!soundEnabled) return;
+
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
@@ -160,13 +183,27 @@ function checkRejoinSession() {
 // Initialize session check
 checkRejoinSession();
 
-// Populate and auto-save name input
-const savedName = localStorage.getItem("recursivemonk_playerName");
-if (savedName) {
-  playerNameInput.value = savedName;
-}
-playerNameInput.addEventListener("input", () => {
-  localStorage.setItem("recursivemonk_playerName", playerNameInput.value.trim());
+// Initialize Profile Badge and Name input
+updateMyProfileBadge();
+
+// Initialize sound state
+const initialSound = localStorage.getItem("recursivemonk_soundEnabled") !== "false";
+updateSoundIconState(initialSound);
+
+// Initialize sort button active states
+document.getElementById("sort-none").classList.toggle("active", sortBy === "none");
+document.getElementById("sort-color").classList.toggle("active", sortBy === "color");
+document.getElementById("sort-value").classList.toggle("active", sortBy === "value");
+
+playerNameInput.addEventListener("change", () => {
+  const newName = playerNameInput.value.trim() || "Player";
+  localStorage.setItem("recursivemonk_playerName", newName);
+  socket.emit("update-profile", {
+    name: newName,
+    avatar: localStorage.getItem("recursivemonk_playerAvatar") || "👤",
+    color: localStorage.getItem("recursivemonk_playerColor") || "#e2e8f0"
+  });
+  updateMyProfileBadge();
 });
 
 // =====================================================
@@ -267,9 +304,17 @@ function renderOpponents(gameState) {
     const nameRow = document.createElement("div");
     nameRow.className = "opponent-name-row";
 
+    const avatarEl = document.createElement("span");
+    avatarEl.className = "opponent-avatar";
+    avatarEl.style.marginRight = "0.4rem";
+    avatarEl.style.fontSize = "1rem";
+    avatarEl.textContent = player.avatar === "owl" ? "🦉" : (player.avatar || "👤");
+    nameRow.appendChild(avatarEl);
+
     const nameEl = document.createElement("span");
     nameEl.className = "opponent-name";
     nameEl.textContent = player.name;
+    nameEl.style.color = player.color || "#e2e8f0";
     nameRow.appendChild(nameEl);
 
     if (player.id === gameState.currentPlayerId) {
@@ -340,7 +385,21 @@ function renderLobby(room) {
 
   room.players.forEach((player) => {
     const li = document.createElement("li");
-    li.textContent = player.name;
+    li.style.display = "flex";
+    li.style.alignItems = "center";
+    li.style.gap = "0.5rem";
+
+    const avatarEl = document.createElement("span");
+    avatarEl.textContent = player.avatar === "owl" ? "🦉" : (player.avatar || "👤");
+    avatarEl.style.fontSize = "1.1rem";
+    li.appendChild(avatarEl);
+
+    const nameEl = document.createElement("span");
+    nameEl.textContent = player.name;
+    nameEl.style.color = player.color || "#e2e8f0";
+    nameEl.style.fontWeight = "600";
+    li.appendChild(nameEl);
+
     if (player.disconnected) {
       li.classList.add("disconnected-player");
       const offBadge = document.createElement("span");
@@ -372,7 +431,7 @@ function getLogClass(type) {
   if (type.startsWith("start"))                     return "log-item log-start";
   if (type === "skip" || type === "reverse-skip")   return "log-item log-skip";
   if (type === "reverse")                           return "log-item log-reverse";
-  if (type === "draw2" || type === "wild4")         return "log-item log-draw2";
+  if (type === "draw2" || type === "wild4" || type === "draw2-stacked" || type === "draw2-penalty") return "log-item log-draw2";
   if (type === "uno-call" || type === "uno-penalty") return "log-item log-uno";
   if (type === "player-disconnect" || type === "player-timeout") return "log-item log-uno";
   if (type === "player-timeout-draw")                            return "log-item log-skip";
@@ -383,6 +442,7 @@ function getLogClass(type) {
 function formatLogItem(log) {
   if (!log) return "";
   const cardStr = log.card ? `<strong>${getCardLabel(log.card)}</strong>` : "";
+  const prefix = log.jumpIn ? `⚡ <strong>[Jump-in]</strong> ` : "";
 
   switch (log.type) {
     case "start":
@@ -396,23 +456,27 @@ function formatLogItem(log) {
     case "start-draw2":
       return `Started with ${cardStr}! <strong>${log.target}</strong> drew 2, skipped.`;
     case "normal":
-      return `<strong>${log.player}</strong> played ${cardStr}.`;
+      return `${prefix}<strong>${log.player}</strong> played ${cardStr}.`;
     case "skip":
-      return `<strong>${log.player}</strong> played ${cardStr} — <strong>${log.target}</strong> skipped.`;
+      return `${prefix}<strong>${log.player}</strong> played ${cardStr} — <strong>${log.target}</strong> skipped.`;
     case "reverse":
-      return `<strong>${log.player}</strong> reversed! Now ${log.direction === 1 ? "Clockwise" : "Counter-CW"}.`;
+      return `${prefix}<strong>${log.player}</strong> reversed! Now ${log.direction === 1 ? "Clockwise" : "Counter-CW"}.`;
     case "reverse-skip":
-      return `<strong>${log.player}</strong> reversed — <strong>${log.target}</strong> skipped.`;
+      return `${prefix}<strong>${log.player}</strong> reversed — <strong>${log.target}</strong> skipped.`;
     case "draw2":
-      return `<strong>${log.player}</strong> played +2! <strong>${log.target}</strong> drew ${log.count}.`;
+      return `${prefix}<strong>${log.player}</strong> played +2! <strong>${log.target}</strong> drew ${log.count}.`;
+    case "draw2-stacked":
+      return `${prefix}<strong>${log.player}</strong> played +2! Stacked to <strong>+${log.count}</strong>.`;
+    case "draw2-penalty":
+      return `<strong>${log.player}</strong> drew <strong>${log.count}</strong> cards from stack penalty.`;
     case "draw":
       return `<strong>${log.player}</strong> drew a card.`;
     case "wild":
-      return `<strong>${log.player}</strong> played Wild — choosing color.`;
+      return `${prefix}<strong>${log.player}</strong> played Wild — choosing color.`;
     case "wild-color":
       return `<strong>${log.player}</strong> chose <strong>${log.color}</strong>.`;
     case "wild4":
-      return `<strong>${log.player}</strong> played Wild +4, chose <strong>${log.color}</strong>! <strong>${log.target}</strong> drew ${log.count}.`;
+      return `${prefix}<strong>${log.player}</strong> played Wild +4, chose <strong>${log.color}</strong>! <strong>${log.target}</strong> drew ${log.count}.`;
     case "uno-call":
       return `📣 <strong>${log.player}</strong> called <strong>UNO!</strong>`;
     case "uno-penalty":
@@ -481,7 +545,21 @@ function renderGame(gameState, hand) {
   gamePlayerList.innerHTML = "";
   gameState.players.forEach((player) => {
     const li = document.createElement("li");
-    li.textContent = player.name;
+    li.style.display = "flex";
+    li.style.alignItems = "center";
+    li.style.gap = "0.4rem";
+
+    const avatarEl = document.createElement("span");
+    avatarEl.textContent = player.avatar === "owl" ? "🦉" : (player.avatar || "👤");
+    avatarEl.style.fontSize = "1rem";
+    li.appendChild(avatarEl);
+
+    const nameEl = document.createElement("span");
+    nameEl.textContent = player.name;
+    nameEl.style.color = player.color || "#e2e8f0";
+    nameEl.style.fontWeight = "600";
+    li.appendChild(nameEl);
+
     if (player.disconnected) {
       li.classList.add("disconnected-player");
       const offBadge = document.createElement("span");
@@ -507,12 +585,37 @@ function renderGame(gameState, hand) {
   // My hand
   const myHandEl = document.getElementById("my-hand");
   myHandEl.innerHTML = "";
-  hand.forEach((card, index) => {
+
+  // Sort hand cards locally while preserving original server indices
+  let handWithIndices = hand.map((card, originalIndex) => ({ card, originalIndex }));
+  if (sortBy === "color") {
+    handWithIndices.sort((a, b) => {
+      const colorOrder = { red: 0, yellow: 1, green: 2, blue: 3, wild: 4 };
+      const colorA = a.card.color;
+      const colorB = b.card.color;
+      if (colorOrder[colorA] !== colorOrder[colorB]) {
+        return colorOrder[colorA] - colorOrder[colorB];
+      }
+      return a.card.value.localeCompare(b.card.value);
+    });
+  } else if (sortBy === "value") {
+    handWithIndices.sort((a, b) => {
+      const valA = a.card.value;
+      const valB = b.card.value;
+      if (valA !== valB) {
+        return valA.localeCompare(valB);
+      }
+      const colorOrder = { red: 0, yellow: 1, green: 2, blue: 3, wild: 4 };
+      return colorOrder[a.card.color] - colorOrder[b.card.color];
+    });
+  }
+
+  handWithIndices.forEach(({ card, originalIndex }, displayIndex) => {
     const cardEl = renderCardEl(card, { playable: isMyTurn });
-    cardEl.style.animationDelay = `${index * 0.04}s`;
+    cardEl.style.animationDelay = `${displayIndex * 0.04}s`;
     if (isMyTurn) {
       cardEl.addEventListener("click", () => {
-        socket.emit("play-card", { cardIndex: index });
+        socket.emit("play-card", { cardIndex: originalIndex });
       });
     }
     myHandEl.appendChild(cardEl);
@@ -670,13 +773,22 @@ function showFloatingEmote(playerId, emote) {
 // =====================================================
 
 document.getElementById("btn-create").addEventListener("click", () => {
-  socket.emit("create-room", { name: getName() });
+  socket.emit("create-room", {
+    name: getName(),
+    avatar: localStorage.getItem("recursivemonk_playerAvatar") || "👤",
+    color: localStorage.getItem("recursivemonk_playerColor") || "#e2e8f0"
+  });
 });
 
 document.getElementById("btn-join").addEventListener("click", () => {
   const code = roomCodeInput.value.trim();
   if (!code) { showError("Please enter a room code."); return; }
-  socket.emit("join-room", { code, name: getName() });
+  socket.emit("join-room", {
+    code,
+    name: getName(),
+    avatar: localStorage.getItem("recursivemonk_playerAvatar") || "👤",
+    color: localStorage.getItem("recursivemonk_playerColor") || "#e2e8f0"
+  });
 });
 
 document.getElementById("btn-leave").addEventListener("click", () => {
@@ -978,5 +1090,159 @@ socket.on("turn-timer", ({ seconds }) => {
   fillEl.classList.remove("warning", "danger");
   if (seconds <= 10)      fillEl.classList.add("danger");
   else if (seconds <= 20) fillEl.classList.add("warning");
+});
+
+
+// =====================================================
+// CARD SORT EVENT LISTENERS
+// =====================================================
+
+document.getElementById("sort-none").addEventListener("click", () => setSortMode("none"));
+document.getElementById("sort-color").addEventListener("click", () => setSortMode("color"));
+document.getElementById("sort-value").addEventListener("click", () => setSortMode("value"));
+
+function setSortMode(mode) {
+  sortBy = mode;
+  localStorage.setItem("recursivemonk_sortBy", mode);
+  
+  document.getElementById("sort-none").classList.toggle("active", mode === "none");
+  document.getElementById("sort-color").classList.toggle("active", mode === "color");
+  document.getElementById("sort-value").classList.toggle("active", mode === "value");
+  
+  render();
+}
+
+
+// =====================================================
+// SETTINGS MODAL EVENT LISTENERS & HELPERS
+// =====================================================
+
+const settingsModal = document.getElementById("settings-modal");
+
+document.getElementById("btn-settings").addEventListener("click", () => {
+  openSettingsModal();
+});
+document.getElementById("close-settings").addEventListener("click", () => closeModal(settingsModal));
+
+settingsModal.addEventListener("click", (e) => {
+  if (e.target === settingsModal) closeModal(settingsModal);
+});
+
+// Setup Avatar grid choices
+document.querySelectorAll(".avatar-pick-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".avatar-pick-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  });
+});
+
+// Setup Color grid choices
+document.querySelectorAll(".color-pick-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".color-pick-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  });
+});
+
+// Save settings button click
+document.getElementById("save-settings-btn").addEventListener("click", () => {
+  const nameInput = document.getElementById("settings-player-name");
+  const newName = nameInput ? nameInput.value.trim() || "Player" : "Player";
+  
+  const activeAvatarBtn = document.querySelector(".avatar-pick-btn.active");
+  const newAvatar = activeAvatarBtn ? activeAvatarBtn.dataset.avatar : "👤";
+  
+  const activeColorBtn = document.querySelector(".color-pick-btn.active");
+  const newColor = activeColorBtn ? activeColorBtn.dataset.color : "#e2e8f0";
+  
+  // Save to local storage
+  localStorage.setItem("recursivemonk_playerName", newName);
+  localStorage.setItem("recursivemonk_playerAvatar", newAvatar);
+  localStorage.setItem("recursivemonk_playerColor", newColor);
+  
+  const soundToggle = document.getElementById("settings-sound-toggle");
+  if (soundToggle) {
+    localStorage.setItem("recursivemonk_soundEnabled", soundToggle.checked ? "true" : "false");
+    updateSoundIconState(soundToggle.checked);
+  }
+  
+  // Emit updates
+  socket.emit("update-profile", { name: newName, avatar: newAvatar, color: newColor });
+  updateMyProfileBadge();
+  
+  // Emit settings if host
+  const isHost = currentRoom && currentRoom.hostId === mySocketId;
+  if (isHost && currentRoom.status === "waiting") {
+    const stackingToggle = document.getElementById("settings-stacking-toggle");
+    const jumpinToggle = document.getElementById("settings-jumpin-toggle");
+    socket.emit("update-settings", {
+      settings: {
+        stacking: stackingToggle ? stackingToggle.checked : false,
+        jumpIn: jumpinToggle ? jumpinToggle.checked : false
+      }
+    });
+  }
+  
+  closeModal(settingsModal);
+});
+
+function openSettingsModal() {
+  const isHost = currentRoom && currentRoom.hostId === mySocketId;
+  const hostRulesSection = document.getElementById("host-rules-section");
+  
+  if (hostRulesSection) {
+    if (isHost && (!currentRoom || currentRoom.status === "waiting")) {
+      hostRulesSection.classList.remove("hidden");
+    } else {
+      hostRulesSection.classList.add("hidden");
+    }
+  }
+  
+  // Populate inputs from localStorage
+  const nameInput = document.getElementById("settings-player-name");
+  if (nameInput) {
+    nameInput.value = localStorage.getItem("recursivemonk_playerName") || "RecursiveMonk";
+  }
+  
+  const savedAvatar = localStorage.getItem("recursivemonk_playerAvatar") || "👤";
+  document.querySelectorAll(".avatar-pick-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.avatar === savedAvatar);
+  });
+  
+  const savedColor = localStorage.getItem("recursivemonk_playerColor") || "#e2e8f0";
+  document.querySelectorAll(".color-pick-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.color === savedColor);
+  });
+  
+  // Populate settings fields from current room state
+  if (currentRoom && currentRoom.settings) {
+    const stackingToggle = document.getElementById("settings-stacking-toggle");
+    if (stackingToggle) stackingToggle.checked = !!currentRoom.settings.stacking;
+    
+    const jumpinToggle = document.getElementById("settings-jumpin-toggle");
+    if (jumpinToggle) jumpinToggle.checked = !!currentRoom.settings.jumpIn;
+  }
+  
+  // Audio state
+  const soundToggle = document.getElementById("settings-sound-toggle");
+  if (soundToggle) {
+    soundToggle.checked = localStorage.getItem("recursivemonk_soundEnabled") !== "false";
+  }
+  
+  openModal(settingsModal);
+}
+
+function updateSoundIconState(enabled) {
+  const icon = document.getElementById("sound-icon");
+  if (icon) {
+    icon.textContent = enabled ? "🔊" : "🔇";
+  }
+}
+
+document.getElementById("btn-toggle-sound").addEventListener("click", () => {
+  const current = localStorage.getItem("recursivemonk_soundEnabled") !== "false";
+  const newVal = !current;
+  localStorage.setItem("recursivemonk_soundEnabled", newVal ? "true" : "false");
+  updateSoundIconState(newVal);
 });
 
