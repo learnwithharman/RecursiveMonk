@@ -483,7 +483,15 @@
 
         <!-- My Hand -->
         <div class="my-hand-area">
-          <p class="hand-label">✋ Your Hand</p>
+          <div class="hand-header">
+            <p class="hand-label">✋ Your Hand</p>
+            <div class="sort-controls">
+              <span class="sort-label">Sort:</span>
+              <button class="sort-btn active" id="sort-none">Default</button>
+              <button class="sort-btn" id="sort-color">Color</button>
+              <button class="sort-btn" id="sort-value">Value</button>
+            </div>
+          </div>
           <div class="hand" id="my-hand"></div>
         </div>
 
@@ -653,6 +661,102 @@
     <button class="btn btn-primary" id="close-tutorial-btn" style="margin-top:1rem;">Let's Play!</button>
   </div>
 </div>
+
+<!-- =================== SETTINGS MODAL =================== -->
+<div id="settings-modal" class="modal-overlay hidden">
+  <div class="modal-content modal-wide">
+    <button class="modal-close-btn" id="close-settings">✕</button>
+    <h2>⚙️ Settings & Profile</h2>
+    <p class="modal-subtitle">Customize your player profile and game rules</p>
+    
+    <div class="settings-grid">
+      <!-- Profile Section -->
+      <div class="settings-section">
+        <h3>Player Profile</h3>
+        
+        <div class="setting-item">
+          <label for="settings-player-name">Your Name</label>
+          <input type="text" id="settings-player-name" maxlength="20" placeholder="Your Name">
+        </div>
+        
+        <div class="setting-item">
+          <label>Choose Avatar</label>
+          <div class="avatar-picker-grid" id="settings-avatar-grid">
+            <button class="avatar-pick-btn" data-avatar="👤">👤</button>
+            <button class="avatar-pick-btn" data-avatar="🐱">🐱</button>
+            <button class="avatar-pick-btn" data-avatar="🐶">🐶</button>
+            <button class="avatar-pick-btn" data-avatar="🦊">🦊</button>
+            <button class="avatar-pick-btn" data-avatar="🦁">🦁</button>
+            <button class="avatar-pick-btn" data-avatar="🐸">🐸</button>
+            <button class="avatar-pick-btn" data-avatar="🐵">🐵</button>
+            <button class="avatar-pick-btn" data-avatar="owl">🦉</button>
+            <button class="avatar-pick-btn" data-avatar="🦄">🦄</button>
+            <button class="avatar-pick-btn" data-avatar="🐼">🐼</button>
+          </div>
+        </div>
+        
+        <div class="setting-item">
+          <label>Choose Name Color</label>
+          <div class="color-picker-flex" id="settings-color-grid">
+            <button class="color-pick-btn" data-color="#e2e8f0" style="background:#e2e8f0;"></button>
+            <button class="color-pick-btn" data-color="#e63946" style="background:#e63946;"></button>
+            <button class="color-pick-btn" data-color="#fbbf24" style="background:#fbbf24;"></button>
+            <button class="color-pick-btn" data-color="#06d6a0" style="background:#06d6a0;"></button>
+            <button class="color-pick-btn" data-color="#3b82f6" style="background:#3b82f6;"></button>
+            <button class="color-pick-btn" data-color="#8b5cf6" style="background:#8b5cf6;"></button>
+            <button class="color-pick-btn" data-color="#ec4899" style="background:#ec4899;"></button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Preferences / Rules Section -->
+      <div class="settings-section">
+        <h3>Game Options</h3>
+        
+        <div class="setting-item flex-row-justify">
+          <div class="setting-text">
+            <h4>Sound Effects</h4>
+            <p>Play game sounds and music alerts</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="settings-sound-toggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        
+        <!-- Host rules (lobby only) -->
+        <div class="settings-rules-group" id="host-rules-section">
+          <h3>House Rules <span class="host-only-badge">Host Only</span></h3>
+          
+          <div class="setting-item flex-row-justify">
+            <div class="setting-text">
+              <h4>Draw Two Stacking</h4>
+              <p>Stack Draw Twos to pass draw penalty to next player</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="settings-stacking-toggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+          
+          <div class="setting-item flex-row-justify">
+            <div class="setting-text">
+              <h4>Jump-in Rule</h4>
+              <p>Play exactly matching cards out of turn immediately</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="settings-jumpin-toggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <button class="btn btn-primary" id="save-settings-btn" style="margin-top:1rem;">Save Settings</button>
+  </div>
+</div>
+
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="/js/lobby.js"></script>
