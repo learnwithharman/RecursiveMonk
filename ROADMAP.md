@@ -49,17 +49,17 @@ A simple, clean multiplayer UNO game in the browser. Real-time, no accounts — 
 ### Gameplay & UX
 - [x] **Turn timer** — Auto-draw/pass after 30s inactivity
 - [x] **Share link** — One-click copy URL with room code to auto-join
-- [ ] **Card sort** — Sort hand by color or value
-- [ ] **Avatar picker** — Choose icon/color in lobby
+- [x] **Card sort** — Sort hand by color or value
+- [x] **Avatar picker** — Choose icon/color in lobby
 - [x] **How to Play / Tutorial modals** — Wire up header buttons (UI placeholders exist)
-- [ ] **Settings panel** — Sound toggle, rule preferences
+- [x] **Settings panel** — Sound toggle, rule preferences
 
 ### Social
 - [x] **Chat** — In-lobby and in-game typed messages
 
 ### Custom Rules
-- [ ] **Draw Two stacking** — Optional house rule toggle
-- [ ] **Jump-in** — Play matching card out of turn (optional)
+- [x] **Draw Two stacking** — Optional house rule toggle
+- [x] **Jump-in** — Play matching card out of turn (optional)
 
 ### Launch
 - [ ] **Deploy** — Render / Railway / similar cloud hosting
