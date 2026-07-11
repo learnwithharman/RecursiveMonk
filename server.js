@@ -112,22 +112,26 @@ function handlePlayerLeft(room, playerId, playerName) {
 }
 
 io.on("connection", (socket) => {
-  socket.on("create-room", ({ name }) => {
+  socket.on("create-room", ({ name, avatar, color }) => {
     const playerName = (name || "Player").trim().slice(0, 20) || "Player";
     const room = createRoom(socket.id, playerName);
-    socket.join(room.code);
     const hostPlayer = room.players[0];
+    hostPlayer.avatar = avatar || "👤";
+    hostPlayer.color = color || "#e2e8f0";
+    socket.join(room.code);
     socket.emit("room-joined", { room: getPublicRoom(room), playerId: hostPlayer.playerId });
     broadcastRoom(room);
   });
 
-  socket.on("join-room", ({ code, name }) => {
+  socket.on("join-room", ({ code, name, avatar, color }) => {
     const playerName = (name || "Player").trim().slice(0, 20) || "Player";
     const result = joinRoom(code, socket.id, playerName);
     if (result.error) {
       socket.emit("room-error", result.error);
       return;
     }
+    result.player.avatar = avatar || "👤";
+    result.player.color = color || "#e2e8f0";
     socket.join(result.room.code);
     socket.emit("room-joined", { room: getPublicRoom(result.room), playerId: result.player.playerId });
     broadcastRoom(result.room);
@@ -293,6 +297,43 @@ io.on("connection", (socket) => {
       return;
     }
 
+    broadcastRoom(room);
+  });
+
+  socket.on("update-profile", ({ name, avatar, color }) => {
+    const room = getRoomByPlayer(socket.id);
+    const sanitizedName = (name || "Player").trim().slice(0, 20) || "Player";
+    
+    if (room) {
+      const player = room.players.find(p => p.id === socket.id);
+      if (player) {
+        player.name = sanitizedName;
+        if (avatar) player.avatar = avatar;
+        if (color) player.color = color;
+      }
+      if (room.status === "playing") {
+        broadcastGame(room);
+      } else {
+        broadcastRoom(room);
+      }
+    }
+  });
+
+  socket.on("update-settings", ({ settings }) => {
+    const room = getRoomByPlayer(socket.id);
+    if (!room) return;
+    if (room.hostId !== socket.id) {
+      socket.emit("room-error", "Only the host can change settings");
+      return;
+    }
+    if (room.status !== "waiting") {
+      socket.emit("room-error", "Cannot change settings mid-game");
+      return;
+    }
+    room.settings = {
+      stacking: !!settings.stacking,
+      jumpIn: !!settings.jumpIn,
+    };
     broadcastRoom(room);
   });
 
