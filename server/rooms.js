@@ -16,7 +16,8 @@ function createRoom(hostSocketId, playerName) {
     code,
     hostId: hostSocketId,
     status: "waiting",
-    players: [{ id: hostSocketId, playerId, name: playerName, disconnected: false }],
+    players: [{ id: hostSocketId, playerId, name: playerName, disconnected: false, avatar: "👤", color: "#e2e8f0" }],
+    settings: { stacking: false, jumpIn: false }
   };
   rooms.set(code, room);
   return room;
@@ -30,7 +31,7 @@ function joinRoom(code, socketId, playerName) {
   if (room.players.some((p) => p.id === socketId)) return { error: "Already in room" };
 
   const playerId = "p_" + Math.random().toString(36).substr(2, 9);
-  const player = { id: socketId, playerId, name: playerName, disconnected: false };
+  const player = { id: socketId, playerId, name: playerName, disconnected: false, avatar: "👤", color: "#e2e8f0" };
   room.players.push(player);
   return { room, player };
 }
@@ -88,7 +89,14 @@ function getPublicRoom(room) {
     code: room.code,
     hostId: room.hostId,
     status: room.status,
-    players: room.players.map((p) => ({ id: p.id, name: p.name, disconnected: !!p.disconnected })),
+    players: room.players.map((p) => ({
+      id: p.id,
+      name: p.name,
+      disconnected: !!p.disconnected,
+      avatar: p.avatar || "👤",
+      color: p.color || "#e2e8f0"
+    })),
+    settings: room.settings || { stacking: false, jumpIn: false }
   };
 }
 
