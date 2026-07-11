@@ -114,6 +114,7 @@ function startGame(room) {
     pendingWild: null,   // { cardIndex, playerId } while awaiting color choice
     unoCalled: {},       // { [playerId]: true } for players who called UNO
     winner: null,
+    stackCount: 0,
   };
 
   room.players.forEach((player, index) => {
@@ -185,12 +186,16 @@ function getPublicGameState(room) {
       cardCount: room.game.hands[p.id] ? room.game.hands[p.id].length : 0,
       calledUno: !!room.game.unoCalled[p.id],
       disconnected: !!p.disconnected,
+      avatar: p.avatar || "👤",
+      color: p.color || "#e2e8f0",
     })),
     logs: room.game.logs || [],
     pendingWild: !!room.game.pendingWild,
     pendingWildPlayerId: room.game.pendingWild ? room.game.pendingWild.playerId : null,
     unoPlayers,
     winner: room.game.winner || null,
+    settings: room.settings || { stacking: false, jumpIn: false },
+    stackCount: room.game.stackCount || 0,
   };
 }
 
@@ -203,7 +208,7 @@ function playCard(room, playerId, cardIndex) {
   if (room.game.pendingWild) return { error: "Waiting for color choice" };
 
   const activePlayer = room.players[room.game.currentTurn];
-  if (activePlayer.id !== playerId) return { error: "It is not your turn" };
+  const isMyTurn = activePlayer.id === playerId;
 
   const hand = room.game.hands[playerId];
   if (!hand || cardIndex < 0 || cardIndex >= hand.length) return { error: "Invalid card selection" };
@@ -215,6 +220,29 @@ function playCard(room, playerId, cardIndex) {
   const isColorMatch = card.color === activeColor;
   const isValueMatch = card.value === topCard.value;
   const isWild = card.color === "wild";
+
+  let isJumpIn = false;
+
+  if (!isMyTurn) {
+    if (room.settings && room.settings.jumpIn) {
+      if (room.game.stackCount > 0 && card.value !== "draw2") {
+        return { error: "Must stack Draw Two or draw cards when penalty is active" };
+      }
+      const isExactMatch = card.color !== "wild" && card.color === topCard.color && card.value === topCard.value;
+      if (!isExactMatch) {
+        return { error: "Jump-in requires an exact color and value match" };
+      }
+      isJumpIn = true;
+      const playerIdx = room.players.findIndex(p => p.id === playerId);
+      room.game.currentTurn = playerIdx;
+    } else {
+      return { error: "It is not your turn" };
+    }
+  }
+
+  if (room.game.stackCount > 0 && card.value !== "draw2") {
+    return { error: "You must play a Draw Two to stack, or draw cards" };
+  }
 
   if (!isColorMatch && !isValueMatch && !isWild) {
     return { error: "Card does not match top card color or value" };
@@ -237,7 +265,7 @@ function playCard(room, playerId, cardIndex) {
   if (isWild) {
     // Park turn — wait for color choice before advancing
     room.game.pendingWild = { playerId, cardValue: card.value };
-    actionLog = { type: "wild", player: activePlayer.name, card };
+    actionLog = { type: "wild", player: room.players[room.game.currentTurn].name, card, jumpIn: isJumpIn };
     pushLog(room, actionLog);
     // Do NOT advance turn yet — chooseColor will do it
     return { success: true, card, log: actionLog, needsColor: true };
@@ -246,7 +274,7 @@ function playCard(room, playerId, cardIndex) {
   if (card.value === "skip") {
     const skippedIdx = safeMod(room.game.currentTurn + room.game.direction, playerCount);
     const skippedPlayer = room.players[skippedIdx];
-    actionLog = { type: "skip", player: activePlayer.name, target: skippedPlayer.name, card };
+    actionLog = { type: "skip", player: room.players[room.game.currentTurn].name, target: skippedPlayer.name, card, jumpIn: isJumpIn };
     advanceTurn(room, 2);
 
   } else if (card.value === "reverse") {
@@ -254,23 +282,35 @@ function playCard(room, playerId, cardIndex) {
     if (playerCount === 2) {
       const skippedIdx = safeMod(room.game.currentTurn + room.game.direction, playerCount);
       const skippedPlayer = room.players[skippedIdx];
-      actionLog = { type: "reverse-skip", player: activePlayer.name, target: skippedPlayer.name, card };
+      actionLog = { type: "reverse-skip", player: room.players[room.game.currentTurn].name, target: skippedPlayer.name, card, jumpIn: isJumpIn };
       advanceTurn(room, 2);
     } else {
-      actionLog = { type: "reverse", player: activePlayer.name, direction: room.game.direction, card };
+      actionLog = { type: "reverse", player: room.players[room.game.currentTurn].name, direction: room.game.direction, card, jumpIn: isJumpIn };
       advanceTurn(room, 1);
     }
 
   } else if (card.value === "draw2") {
-    const targetIdx = safeMod(room.game.currentTurn + room.game.direction, playerCount);
-    const targetPlayer = room.players[targetIdx];
-    const drawnCards = drawFromDeck(room, 2);
-    room.game.hands[targetPlayer.id].push(...drawnCards);
-    actionLog = { type: "draw2", player: activePlayer.name, target: targetPlayer.name, count: drawnCards.length, card };
-    advanceTurn(room, 2);
+    if (room.settings && room.settings.stacking) {
+      room.game.stackCount = (room.game.stackCount || 0) + 2;
+      actionLog = { 
+        type: "draw2-stacked", 
+        player: room.players[room.game.currentTurn].name, 
+        count: room.game.stackCount, 
+        card, 
+        jumpIn: isJumpIn 
+      };
+      advanceTurn(room, 1);
+    } else {
+      const targetIdx = safeMod(room.game.currentTurn + room.game.direction, playerCount);
+      const targetPlayer = room.players[targetIdx];
+      const drawnCards = drawFromDeck(room, 2);
+      room.game.hands[targetPlayer.id].push(...drawnCards);
+      actionLog = { type: "draw2", player: room.players[room.game.currentTurn].name, target: targetPlayer.name, count: drawnCards.length, card, jumpIn: isJumpIn };
+      advanceTurn(room, 2);
+    }
 
   } else {
-    actionLog = { type: "normal", player: activePlayer.name, card };
+    actionLog = { type: "normal", player: room.players[room.game.currentTurn].name, card, jumpIn: isJumpIn };
     advanceTurn(room, 1);
   }
 
@@ -372,7 +412,10 @@ function drawCard(room, playerId) {
   const activePlayer = room.players[room.game.currentTurn];
   if (activePlayer.id !== playerId) return { error: "It is not your turn" };
 
-  const drawn = drawFromDeck(room, 1);
+  const isStackActive = room.game.stackCount && room.game.stackCount > 0;
+  const drawCount = isStackActive ? room.game.stackCount : 1;
+
+  const drawn = drawFromDeck(room, drawCount);
   if (drawn.length === 0) return { error: "No cards left in the deck to draw" };
 
   room.game.hands[playerId].push(...drawn);
@@ -380,7 +423,14 @@ function drawCard(room, playerId) {
   // Drawing cancels any un-called UNO status
   delete room.game.unoCalled[playerId];
 
-  const actionLog = { type: "draw", player: activePlayer.name };
+  let actionLog;
+  if (isStackActive) {
+    actionLog = { type: "draw2-penalty", player: activePlayer.name, count: drawn.length };
+    room.game.stackCount = 0;
+  } else {
+    actionLog = { type: "draw", player: activePlayer.name };
+  }
+
   pushLog(room, actionLog);
 
   advanceTurn(room, 1);
