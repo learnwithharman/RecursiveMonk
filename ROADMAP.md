@@ -62,8 +62,8 @@ A simple, clean multiplayer UNO game in the browser. Real-time, no accounts — 
 - [x] **Jump-in** — Play matching card out of turn (optional)
 
 ### Launch
-- [ ] **Deploy** — Render / Railway / similar cloud hosting
-- [ ] **v1.0 Launch** — Public URL, smoke tests, README badges
+- [x] **Deploy** — Render / Railway / similar cloud hosting
+- [x] **v1.0 Launch** — Public URL, smoke tests, README badges
 
 ---
 
