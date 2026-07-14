@@ -215,7 +215,7 @@ function getCardSymbol(card) {
     skip:    "⊘",
     reverse: "⇆",
     draw2:   "+2",
-    wild:    "★",
+    wild:    "WILD",
     wild4:   "+4",
   };
   return symbols[card.value] !== undefined ? symbols[card.value] : card.value;
@@ -230,29 +230,100 @@ function getCardLabel(card) {
     : `${displayColor.charAt(0).toUpperCase() + displayColor.slice(1)} ${value}`;
 }
 
+// =====================================================
+// UNO PENALTY TOAST
+// =====================================================
+function showUnoPenaltyToast(message, sub) {
+  // Remove existing toast
+  const existing = document.querySelector(".uno-penalty-toast");
+  if (existing) existing.remove();
+
+  const toast = document.createElement("div");
+  toast.className = "uno-penalty-toast";
+  toast.innerHTML = `
+    <span class="penalty-icon">💳</span>
+    ${message}
+    <span class="penalty-sub">${sub}</span>
+  `;
+  document.body.appendChild(toast);
+
+  // Auto-remove after 2.5s with fade-out
+  setTimeout(() => {
+    toast.style.animation = "penaltyToastOut 0.4s ease-in both";
+    setTimeout(() => toast.remove(), 400);
+  }, 2500);
+}
+
+// =====================================================
+// CARD RENDERING — Premium Design
+// =====================================================
+
 function renderCardEl(card, { playable = true } = {}) {
   const el = document.createElement("div");
   const cardColor = card.activeColor || card.color;
   el.className = `uno-card ${cardColor}`;
   if (!playable) el.classList.add("inactive");
 
-  const symbol = getCardSymbol(card);
+  const isWild   = card.color === "wild";
+  const isWild4  = card.value === "wild4";
+  const isRev    = card.value === "reverse";
+  const isNum    = !isWild && !isRev && card.value !== "skip" && card.value !== "draw2";
+  const isSkip   = card.value === "skip";
+  const isDraw2  = card.value === "draw2";
 
+  const cornerSymbol = isWild4 ? "+4" : isWild ? "★" : getCardSymbol(card);
+
+  // Top-left corner
   const cornerTop = document.createElement("span");
   cornerTop.className = "card-corner card-corner-top";
-  cornerTop.textContent = symbol;
+  cornerTop.textContent = cornerSymbol;
+  el.appendChild(cornerTop);
 
-  const center = document.createElement("span");
-  center.className = "card-center";
-  center.textContent = symbol;
-
+  // Bottom-right corner (mirrored)
   const cornerBot = document.createElement("span");
   cornerBot.className = "card-corner card-corner-bottom";
-  cornerBot.textContent = symbol;
-
-  el.appendChild(cornerTop);
-  el.appendChild(center);
+  cornerBot.textContent = cornerSymbol;
   el.appendChild(cornerBot);
+
+  if (isWild) {
+    // Wild: black circle center ring
+    const ring = document.createElement("div");
+    ring.className = "card-wild-ring";
+    const label = document.createElement("span");
+    label.className = "wild-label";
+    label.textContent = isWild4 ? "+4" : "WILD";
+    ring.appendChild(label);
+    el.appendChild(ring);
+
+    if (isWild4) {
+      // Extra corner indicators for wild4
+      const badge = document.createElement("div");
+      badge.className = "card-wild4-badge";
+      badge.textContent = "+4";
+      el.appendChild(badge);
+    }
+
+  } else if (isRev) {
+    // Reverse: stacked arrows
+    const arrows = document.createElement("div");
+    arrows.className = "card-reverse-arrows";
+    const top = document.createElement("span");
+    top.className = "arr-top";
+    top.textContent = "➺";
+    const bot = document.createElement("span");
+    bot.className = "arr-bot";
+    bot.textContent = "➺";
+    arrows.appendChild(top);
+    arrows.appendChild(bot);
+    el.appendChild(arrows);
+
+  } else {
+    // Number / Skip / Draw2: large center text
+    const center = document.createElement("span");
+    center.className = "card-center";
+    center.textContent = isDraw2 ? "+2" : isSkip ? "⊘" : card.value;
+    el.appendChild(center);
+  }
 
   return el;
 }
@@ -260,15 +331,59 @@ function renderCardEl(card, { playable = true } = {}) {
 function updateTopCard(topCard) {
   const el = document.getElementById("top-card");
   const topCardColor = topCard.activeColor || topCard.color;
-  const symbol = getCardSymbol(topCard);
-  const newKey = `${topCardColor}-${topCard.value}-${topCard.activeColor || ""}`;
-  const prevKey = el.dataset.cardKey;
+  const isWild   = topCard.color === "wild";
+  const isWild4  = topCard.value === "wild4";
+  const isRev    = topCard.value === "reverse";
+  const isDraw2  = topCard.value === "draw2";
+  const isSkip   = topCard.value === "skip";
+  const newKey   = `${topCardColor}-${topCard.value}-${topCard.activeColor || ""}`;
+  const prevKey  = el.dataset.cardKey;
 
   el.className = `uno-card ${topCardColor}`;
+  el.innerHTML = "";
 
-  el.querySelector(".card-corner-top").textContent    = symbol;
-  el.querySelector(".card-center").textContent        = symbol;
-  el.querySelector(".card-corner-bottom").textContent = symbol;
+  // Corner symbol
+  const cornerSymbol = isWild4 ? "+4" : isWild ? "★" : isDraw2 ? "+2" : isSkip ? "⊘" : isRev ? "⇆" : topCard.value;
+
+  const ct = document.createElement("span");
+  ct.className = "card-corner card-corner-top";
+  ct.textContent = cornerSymbol;
+  el.appendChild(ct);
+
+  const cb = document.createElement("span");
+  cb.className = "card-corner card-corner-bottom";
+  cb.textContent = cornerSymbol;
+  el.appendChild(cb);
+
+  if (isWild) {
+    const ring = document.createElement("div");
+    ring.className = "card-wild-ring";
+    const lbl = document.createElement("span");
+    lbl.className = "wild-label";
+    lbl.textContent = isWild4 ? "+4" : "WILD";
+    ring.appendChild(lbl);
+    el.appendChild(ring);
+    if (isWild4) {
+      const badge = document.createElement("div");
+      badge.className = "card-wild4-badge";
+      badge.textContent = "+4";
+      el.appendChild(badge);
+    }
+  } else if (isRev) {
+    const arrows = document.createElement("div");
+    arrows.className = "card-reverse-arrows";
+    const top = document.createElement("span");
+    top.className = "arr-top"; top.textContent = "➺";
+    const bot = document.createElement("span");
+    bot.className = "arr-bot"; bot.textContent = "➺";
+    arrows.appendChild(top); arrows.appendChild(bot);
+    el.appendChild(arrows);
+  } else {
+    const center = document.createElement("span");
+    center.className = "card-center";
+    center.textContent = isDraw2 ? "+2" : isSkip ? "⊘" : topCard.value;
+    el.appendChild(center);
+  }
 
   if (prevKey && prevKey !== newKey) {
     void el.offsetWidth;
@@ -428,13 +543,13 @@ function renderLobby(room) {
 // =====================================================
 
 function getLogClass(type) {
-  if (type.startsWith("start"))                     return "log-item log-start";
-  if (type === "skip" || type === "reverse-skip")   return "log-item log-skip";
-  if (type === "reverse")                           return "log-item log-reverse";
+  if (type.startsWith("start"))                      return "log-item log-start";
+  if (type === "skip" || type === "reverse-skip")    return "log-item log-skip";
+  if (type === "reverse")                            return "log-item log-reverse";
   if (type === "draw2" || type === "wild4" || type === "draw2-stacked" || type === "draw2-penalty") return "log-item log-draw2";
-  if (type === "uno-call" || type === "uno-penalty") return "log-item log-uno";
+  if (type === "uno-call" || type === "uno-penalty" || type === "uno-penalty-self") return "log-item log-uno";
   if (type === "player-disconnect" || type === "player-timeout") return "log-item log-uno";
-  if (type === "player-timeout-draw")                            return "log-item log-skip";
+  if (type === "player-timeout-draw")                             return "log-item log-skip";
   if (type === "player-reconnect")                               return "log-item log-reverse";
   return "log-item log-normal";
 }
@@ -481,6 +596,8 @@ function formatLogItem(log) {
       return `📣 <strong>${log.player}</strong> called <strong>UNO!</strong>`;
     case "uno-penalty":
       return `⚡ <strong>${log.challenger}</strong> challenged <strong>${log.target}</strong>! Drew ${log.count} penalty cards.`;
+    case "uno-penalty-self":
+      return `💳 <strong>${log.player}</strong> forgot UNO! Drew ${log.count} penalty cards.`;
     case "player-disconnect":
       return `⚠️ <strong>${log.player}</strong> disconnected! Waiting 30s to reconnect...`;
     case "player-timeout":
@@ -610,12 +727,35 @@ function renderGame(gameState, hand) {
     });
   }
 
+  const me = gameState.players.find((p) => p.id === mySocketId);
+  const alreadyCalledUno = me ? me.calledUno : false;
+
   handWithIndices.forEach(({ card, originalIndex }, displayIndex) => {
     const cardEl = renderCardEl(card, { playable: isMyTurn });
     cardEl.style.animationDelay = `${displayIndex * 0.04}s`;
+
+    // Mark the last card with a pulsing glow
+    if (hand.length === 1) {
+      cardEl.classList.add("last-card");
+    }
+
     if (isMyTurn) {
       cardEl.addEventListener("click", () => {
-        socket.emit("play-card", { cardIndex: originalIndex });
+        // UNO auto-penalty: if this is their last card and UNO wasn't called
+        if (hand.length === 1 && !alreadyCalledUno) {
+          // Apply penalty first, then the card can still be played (player now has 3 cards)
+          socket.emit("self-uno-penalty");
+          // The server will broadcast the updated hand — no need to block the play
+          // We still allow the play attempt; server will handle it
+        }
+
+        // Card throw animation
+        cardEl.classList.add("card-throwing");
+        playSound('play');
+
+        setTimeout(() => {
+          socket.emit("play-card", { cardIndex: originalIndex });
+        }, 120); // tiny delay so throw animation is visible
       });
     }
     myHandEl.appendChild(cardEl);
@@ -627,10 +767,21 @@ function renderGame(gameState, hand) {
     const startIdx = Math.max(0, newLogs.length - (newLogs.length - lastLogCount));
     for (let i = startIdx; i < newLogs.length; i++) {
       const log = newLogs[i];
-      if (log.type === "uno-call" || log.type === "uno-penalty") {
+      if (log.type === "uno-call" || log.type === "uno-penalty" || log.type === "uno-penalty-self") {
         playSound('uno');
       } else if (log.type === "draw" || log.type === "draw2" || log.type === "wild4") {
         playSound('draw');
+      } else if (log.type === "reverse" || log.type === "reverse-skip") {
+        // Trigger reverse flash on direction indicator
+        setTimeout(() => {
+          const dirEl = document.getElementById("direction-indicator");
+          if (dirEl) {
+            dirEl.classList.remove("reverse-flash");
+            void dirEl.offsetWidth; // reflow to restart animation
+            dirEl.classList.add("reverse-flash");
+            setTimeout(() => dirEl.classList.remove("reverse-flash"), 750);
+          }
+        }, 80);
       }
     }
   }
@@ -664,10 +815,7 @@ function renderGame(gameState, hand) {
     gameOverModal.classList.add("hidden");
   }
 
-  // UNO action buttons
-  const me = gameState.players.find((p) => p.id === mySocketId);
-  const alreadyCalledUno = me ? me.calledUno : false;
-
+  // UNO action buttons (me and alreadyCalledUno already declared above)
   if (hand.length === 1 && !alreadyCalledUno) {
     btnCallUno.disabled = false;
     btnCallUno.classList.add("pulse-active");
@@ -825,6 +973,11 @@ btnRestart.addEventListener("click", () => {
 
 document.getElementById("draw-pile").addEventListener("click", () => {
   if (latestGameState && latestGameState.currentPlayerId === mySocketId) {
+    // Animate the draw pile card
+    const drawPileEl = document.getElementById("draw-pile");
+    drawPileEl.classList.add("card-throwing");
+    setTimeout(() => drawPileEl.classList.remove("card-throwing"), 400);
+
     socket.emit("draw-card");
     playSound('draw');
   }
@@ -1046,6 +1199,7 @@ socket.on("emote-received", ({ playerId, playerName, emote }) => {
 });
 
 let myHand = [];
+let prevHandSize = 0;
 let latestGameState = null;
 
 function render() {
@@ -1053,8 +1207,27 @@ function render() {
 }
 
 socket.on("your-hand", (hand) => {
+  const oldSize = prevHandSize;
+  prevHandSize = hand.length;
   myHand = hand;
   render();
+
+  // Animate newly drawn cards (hand grew)
+  if (hand.length > oldSize) {
+    const addedCount = hand.length - oldSize;
+    const handEl = document.getElementById("my-hand");
+    if (handEl) {
+      const cards = handEl.querySelectorAll(".uno-card");
+      const startIdx = Math.max(0, cards.length - addedCount);
+      for (let i = startIdx; i < cards.length; i++) {
+        const c = cards[i];
+        c.classList.remove("card-drawing");
+        void c.offsetWidth;
+        c.classList.add("card-drawing");
+        c.addEventListener("animationend", () => c.classList.remove("card-drawing"), { once: true });
+      }
+    }
+  }
 });
 
 socket.on("game-started", (gameState) => {
@@ -1065,6 +1238,14 @@ socket.on("game-started", (gameState) => {
 socket.on("game-updated", (gameState) => {
   latestGameState = gameState;
   render();
+});
+
+// UNO auto-penalty notification
+socket.on("uno-penalty-applied", ({ count }) => {
+  showUnoPenaltyToast(
+    `UNO Penalty! +${count} Cards`,
+    "You forgot to call UNO before playing your last card"
+  );
 });
 
 // Chat received
