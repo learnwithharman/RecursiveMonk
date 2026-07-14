@@ -360,6 +360,33 @@ io.on("connection", (socket) => {
   });
 
 
+  // Auto-UNO penalty: player forgot to call UNO before playing their last card
+  socket.on("self-uno-penalty", () => {
+    const room = getRoomByPlayer(socket.id);
+    if (!room || room.status !== "playing" || !room.game) return;
+
+    const hand = room.game.hands[socket.id];
+    // Only apply if player still has cards and hasn't called UNO
+    if (!hand || hand.length === 0 || room.game.unoCalled[socket.id]) return;
+
+    const { drawCard: drawFromGame } = require("./server/game");
+    // Draw 2 penalty cards
+    const drawn1 = room.game.drawPile.length > 0 ? room.game.drawPile.pop() : null;
+    const drawn2 = room.game.drawPile.length > 0 ? room.game.drawPile.pop() : null;
+    if (drawn1) hand.push(drawn1);
+    if (drawn2) hand.push(drawn2);
+
+    const player = room.players.find(p => p.id === socket.id);
+    if (!room.game.logs) room.game.logs = [];
+    room.game.logs.push({ type: "uno-penalty-self", player: player ? player.name : "Someone", count: [drawn1, drawn2].filter(Boolean).length });
+    if (room.game.logs.length > 15) room.game.logs.shift();
+
+    // Send updated hand only to this player, broadcast state
+    io.to(socket.id).emit("your-hand", room.game.hands[socket.id]);
+    io.to(socket.id).emit("uno-penalty-applied", { count: [drawn1, drawn2].filter(Boolean).length });
+    io.to(room.code).emit("game-updated", getPublicGameState(room));
+  });
+
   socket.on("disconnect", () => {
     const room = getRoomByPlayer(socket.id);
     if (!room) return;
