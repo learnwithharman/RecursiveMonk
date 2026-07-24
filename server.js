@@ -19,6 +19,7 @@ const {
   callUno,
   challengeUno,
   drawCard,
+  passTurn,
 } = require("./server/game");
 
 const app = express();
@@ -62,6 +63,12 @@ function startRoomTimer(room) {
       if (!room.game.logs) room.game.logs = [];
       room.game.logs.push({ type: "player-timeout-draw", player: activePlayer.name });
       if (room.game.logs.length > 15) room.game.logs.shift();
+
+      // Failsafe for Draw Until Playable: force a pass if player did not play
+      const currentActiveNow = room.players[room.game.currentTurn];
+      if (currentActiveNow && currentActiveNow.id === activePlayer.id) {
+        passTurn(room, activePlayer.id);
+      }
     }
     broadcastGame(room);
   }, TURN_DURATION_MS);
@@ -79,8 +86,25 @@ function broadcastGame(room) {
     io.to(player.id).emit("your-hand", getPlayerHand(room, player.id));
   });
   io.to(room.code).emit("game-updated", getPublicGameState(room));
-  // Restart turn timer after every game state broadcast
-  startRoomTimer(room);
+  
+  if (room.status === "round-ended") {
+    clearRoomTimer(room.code);
+    const roundNumber = room.roundsPlayed;
+    
+    // Automatically start the next round after 6 seconds
+    setTimeout(() => {
+      if (room.status === "round-ended" && room.roundsPlayed === roundNumber) {
+        startGame(room);
+        room.players.forEach((p) => {
+          io.to(p.id).emit("your-hand", getPlayerHand(room, p.id));
+        });
+        io.to(room.code).emit("game-started", getPublicGameState(room));
+      }
+    }, 6000);
+  } else {
+    // Restart turn timer after every game state broadcast
+    startRoomTimer(room);
+  }
 }
 
 
@@ -112,9 +136,9 @@ function handlePlayerLeft(room, playerId, playerName) {
 }
 
 io.on("connection", (socket) => {
-  socket.on("create-room", ({ name, avatar, color }) => {
+  socket.on("create-room", ({ name, avatar, color, settings }) => {
     const playerName = (name || "Player").trim().slice(0, 20) || "Player";
-    const room = createRoom(socket.id, playerName);
+    const room = createRoom(socket.id, playerName, settings);
     const hostPlayer = room.players[0];
     hostPlayer.avatar = avatar || "👤";
     hostPlayer.color = color || "#e2e8f0";
@@ -261,6 +285,19 @@ io.on("connection", (socket) => {
     broadcastGame(room);
   });
 
+  socket.on("pass-turn", () => {
+    const room = getRoomByPlayer(socket.id);
+    if (!room) return;
+
+    const result = passTurn(room, socket.id);
+    if (result.error) {
+      socket.emit("room-error", result.error);
+      return;
+    }
+
+    broadcastGame(room);
+  });
+
   socket.on("call-uno", () => {
     const room = getRoomByPlayer(socket.id);
     if (!room) return;
@@ -331,6 +368,13 @@ io.on("connection", (socket) => {
       return;
     }
     room.settings = {
+      matchType: settings.matchType || 1,
+      startingDirection: settings.startingDirection !== undefined ? settings.startingDirection : 1,
+      startingCards: settings.startingCards || 7,
+      drawUntilPlayable: !!settings.drawUntilPlayable,
+      unoChallenge: settings.unoChallenge !== false,
+      spectators: !!settings.spectators,
+      roomVisibility: settings.roomVisibility || "private",
       stacking: !!settings.stacking,
       jumpIn: !!settings.jumpIn,
     };
@@ -405,7 +449,7 @@ io.on("connection", (socket) => {
       broadcastRoom(room);
     }
 
-    const timeoutDuration = room.status === "playing" ? 30000 : 5000;
+    const timeoutDuration = room.status === "playing" ? 300000 : 300000; // 5 minutes grace period
     player.disconnectTimeout = setTimeout(() => {
       const index = room.players.findIndex((p) => p.playerId === player.playerId);
       if (index === -1) return;
