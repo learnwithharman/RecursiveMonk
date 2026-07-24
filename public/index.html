@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RecursiveMonk UNO — Multiplayer Card Game</title>
-  <meta name="description" content="Play UNO online with friends. Create or join a room and play the classic card game in real time.">
+  <title>Rekursive Monk — Multiplayer Card Game</title>
+  <meta name="description" content="Rekursive Monk is a premium multiplayer UNO-style card game. Create a room, invite friends, and play in real time with cinematic animations.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -12,10 +12,32 @@
 </head>
 <body>
 
+<!-- Fullscreen Welcome Screen -->
+<div id="welcome-screen" class="welcome-overlay">
+  <div class="welcome-bg-cards">
+    <div class="floating-card c1">UNO</div>
+    <div class="floating-card c2">UNO</div>
+    <div class="floating-card c3">UNO</div>
+    <div class="floating-card c4">UNO</div>
+  </div>
+  <div class="welcome-card card">
+    <h1 class="welcome-title gradient-text-uno">Rekursive Monk</h1>
+    <p class="welcome-subtitle">Choose your Display Name to join the game</p>
+    
+    <div class="input-group">
+      <input type="text" id="welcome-username" placeholder="Display Name" maxlength="20" autofocus autocomplete="off">
+    </div>
+    
+    <button class="btn btn-primary" id="welcome-btn-continue">
+      Continue <span class="arrow">→</span>
+    </button>
+  </div>
+</div>
+
 <!-- Global Error Toast -->
 <div id="error-box" class="error-toast hidden"></div>
 
-<div class="container home-mode">
+<div class="container home-mode hidden">
   <!-- =================== APP HEADER =================== -->
   <header class="app-header">
     <div class="header-left">
@@ -38,7 +60,7 @@
           <span class="avatar-icon">👤</span>
         </div>
         <div class="profile-info">
-          <input type="text" id="player-name" class="header-name-input" value="RecursiveMonk" maxlength="20" title="Click to edit name">
+          <input type="text" id="player-name" class="header-name-input" value="Player" maxlength="20" title="Click to edit name">
           <span class="status-indicator online">Online</span>
         </div>
       </div>
@@ -128,7 +150,8 @@
         <!-- Beak -->
         <polygon points="94,92 106,92 100,108" fill="url(#beakGrad)" stroke="#0c0702" stroke-width="1.5" stroke-linejoin="round" />
       </svg>
-      <h1 class="hero-title">RECURSIVEMONK</h1>
+      <h1 class="hero-title">REKURSIVE MONK</h1>
+      <h2 class="welcome-user-display-banner">Welcome, <span id="welcome-username-display"></span> 👋</h2>
       <p class="hero-tagline">
         <span class="tag-create">CREATE.</span>
         <span class="tag-connect">CONNECT.</span>
@@ -136,12 +159,14 @@
       </p>
     </div>
 
-    <!-- Rejoin Game Banner -->
-    <div id="rejoin-container" class="card hidden" style="border-color: var(--c-yellow); margin-bottom: 2rem;">
-      <p class="waiting-msg" style="color: var(--c-yellow); font-weight: 600; text-transform: uppercase; margin-top: 0; margin-bottom: 0.25rem;">Active Session Found</p>
-      <p class="subtitle" id="rejoin-msg" style="margin-bottom: 1rem; font-size: 0.85rem;"></p>
-      <button class="btn btn-primary" id="btn-rejoin">Rejoin Game</button>
-      <button class="btn btn-secondary" id="btn-clear-session">Start Fresh</button>
+    <!-- Rejoin Game Modal -->
+    <div id="rejoin-container" class="rejoin-overlay hidden">
+      <div class="rejoin-inner">
+        <p class="waiting-msg" style="color: var(--c-yellow); font-weight: 700; text-transform: uppercase; margin-top: 0; margin-bottom: 0.25rem; font-size: 1.1rem;">Game Still In Progress</p>
+        <p class="subtitle" id="rejoin-msg" style="margin-bottom: 1.5rem; font-size: 0.9rem; color: var(--text-muted);"></p>
+        <button class="btn btn-primary" id="btn-rejoin">Continue Game</button>
+        <button class="btn btn-secondary" id="btn-clear-session" style="margin-top: 0.5rem;">Leave Room</button>
+      </div>
     </div>
 
     <!-- 2-Column Landing Page Grid -->
@@ -434,13 +459,12 @@
 
     <!-- Game Header Bar -->
     <div class="game-header">
-      <div class="game-room-badge">🃏 Room: <strong id="game-room-code"></strong></div>
+      <div class="game-room-badge">🃏 <strong id="game-room-code"></strong> <button class="btn-copy-code" id="btn-game-copy-code" title="Copy Room Code">📋</button></div>
       <div id="direction-indicator" class="direction-container">
         <span id="direction-arrow" class="direction-arrow">↻</span>
         <span id="direction-text" class="direction-text">Clockwise</span>
       </div>
       <div id="turn-info" class="turn-info-pill">Waiting...</div>
-      <!-- Turn Timer -->
       <div id="turn-timer-wrap" class="turn-timer-wrap hidden">
         <svg class="timer-ring" viewBox="0 0 36 36" width="36" height="36">
           <circle class="timer-ring-bg" cx="18" cy="18" r="15.9155" />
@@ -450,100 +474,263 @@
       </div>
     </div>
 
-    <!-- Game Grid -->
-    <div class="game-grid">
+    <!-- Main Game Layout: Left Sidebar + Board + Right Sidebar -->
+    <div class="game-main-layout">
 
-      <!-- LEFT: Main Play Area -->
-      <div class="game-main">
-
-        <!-- Opponents -->
-        <div class="opponents-area" id="opponents-area">
-          <!-- Dynamically rendered by JS -->
+      <!-- LEFT SIDEBAR -->
+      <div class="game-sidebar-left">
+        <div class="sidebar-card">
+          <p class="sidebar-title">Players (<span id="game-players-count">2/4</span>)</p>
+          <ul class="player-list-premium" id="game-player-list"></ul>
         </div>
-
-        <!-- Table Center: Piles -->
-        <div class="table-center">
-          <div class="pile-area">
-            <div class="pile-wrapper">
-              <p class="pile-label">Draw Pile</p>
-              <div class="uno-card card-back" id="draw-pile">
-                <span class="card-back-logo">UNO</span>
-              </div>
-            </div>
-            <div class="pile-wrapper">
-              <p class="pile-label">Discard Pile</p>
-              <div class="uno-card" id="top-card">
-                <span class="card-corner card-corner-top">?</span>
-                <span class="card-center">?</span>
-                <span class="card-corner card-corner-bottom">?</span>
-              </div>
-            </div>
+        <div class="sidebar-card sidebar-activity">
+          <p class="sidebar-title">Activity</p>
+          <div class="log-container-premium" id="game-log"></div>
+        </div>
+        <div class="sidebar-card chat-card">
+          <p class="sidebar-title">💬 Chat</p>
+          <div class="chat-messages" id="game-chat-messages"></div>
+          <div class="chat-input-row">
+            <input type="text" id="game-chat-input" class="chat-input" placeholder="Type a message..." maxlength="200" autocomplete="off">
+            <button class="chat-send-btn-premium" id="game-chat-send">➔</button>
           </div>
         </div>
+      </div>
 
-        <!-- My Hand -->
-        <div class="my-hand-area">
-          <div class="hand-header">
-            <p class="hand-label">✋ Your Hand</p>
-            <div class="sort-controls">
+      <!-- CENTER BOARD (positional layout) -->
+      <div class="game-board-wrap">
+        <div class="game-board-table" id="game-board-table">
+
+          <!-- TOP OPPONENT SLOT -->
+          <div class="player-slot slot-top" id="slot-top">
+            <!-- JS populated -->
+          </div>
+
+          <!-- LEFT OPPONENT SLOT -->
+          <div class="player-slot slot-left" id="slot-left">
+            <!-- JS populated -->
+          </div>
+
+          <!-- RIGHT OPPONENT SLOT -->
+          <div class="player-slot slot-right" id="slot-right">
+            <!-- JS populated -->
+          </div>
+
+          <!-- CENTER TABLE SURFACE: Draw & Discard piles only -->
+          <div class="table-surface">
+            <!-- Rotating direction ring -->
+            <div class="table-direction-ring" id="board-glow-ring">
+              <div class="ring-arrow ring-arrow-cw">↻</div>
+              <div class="ring-arrow ring-arrow-ccw">↺</div>
+            </div>
+            <!-- DRAW PILE -->
+            <div class="pile-zone pile-zone-draw">
+              <div class="pile-stack-3d" id="draw-pile-stack">
+                <div class="pile-shadow-card"></div>
+                <div class="pile-shadow-card2"></div>
+                <div class="uno-card card-back pile-top-card" id="draw-pile">
+                  <span class="card-back-logo">UNO</span>
+                </div>
+              </div>
+              <div class="pile-label-tag">DRAW</div>
+              <div class="pile-count-badge" id="draw-pile-count">52</div>
+            </div>
+            <!-- DISCARD PILE -->
+            <div class="pile-zone pile-zone-discard">
+              <div class="discard-pile-stack" id="discard-pile-stack">
+                <div class="uno-card" id="top-card">
+                  <span class="card-corner card-corner-top">?</span>
+                  <span class="card-center">?</span>
+                  <span class="card-corner card-corner-bottom">?</span>
+                </div>
+              </div>
+              <div class="pile-label-tag">DISCARD</div>
+            </div>
+          </div>
+
+          <!-- BOTTOM: MY HAND (always at bottom) -->
+          <div class="player-slot slot-bottom" id="slot-bottom">
+            <div class="my-player-info" id="my-player-info">
+              <div class="my-avatar-circle" id="my-avatar-indicator">👤</div>
+              <div class="my-name-display" id="my-name-display-id">Player</div>
+              <div class="my-card-count" id="my-card-count">0 cards</div>
+            </div>
+            <div class="sort-controls-premium">
               <span class="sort-label">Sort:</span>
               <button class="sort-btn active" id="sort-none">Default</button>
               <button class="sort-btn" id="sort-color">Color</button>
               <button class="sort-btn" id="sort-value">Value</button>
+              <button class="pass-btn hidden" id="btn-pass-turn">Pass Turn</button>
+            </div>
+            <div class="hand-fanned-container" id="my-hand">
+              <!-- Dynamically populated -->
             </div>
           </div>
-          <div class="hand" id="my-hand"></div>
+
+        </div><!-- /game-board-table -->
+      </div><!-- /game-board-wrap -->
+
+      <!-- RIGHT SIDEBAR -->
+      <div class="game-sidebar-right">
+        <div class="sidebar-card action-buttons-card">
+          <button class="btn btn-call-uno-premium" id="btn-call-uno">🔥 Call UNO!</button>
+          <button class="btn btn-challenge-uno-premium" id="btn-challenge-uno">✨ Challenge UNO</button>
         </div>
-
-      </div><!-- /game-main -->
-
-      <!-- RIGHT: Sidebar -->
-      <div class="game-sidebar">
-
-        <!-- UNO Action Buttons -->
-        <div class="sidebar-card">
-          <button class="btn btn-call-uno" id="btn-call-uno">📣 Call UNO!</button>
-          <button class="btn btn-challenge-uno" id="btn-challenge-uno">⚡ Challenge UNO</button>
+        <div class="sidebar-card match-score-card">
+          <p class="sidebar-title" id="scoreboard-title">Best of 1</p>
+          <div class="score-list" id="match-score-list"></div>
         </div>
-
-        <!-- Players List -->
-        <div class="sidebar-card">
-          <p class="sidebar-title">Players</p>
-          <ul class="player-list" id="game-player-list"></ul>
+        <div class="sidebar-card history-card">
+          <p class="sidebar-title">Last Plays</p>
+          <div class="history-list-premium" id="game-history-list"></div>
         </div>
-
-        <!-- Quick Emotes React Card -->
-        <div class="sidebar-card">
+        <div class="sidebar-card reactions-card">
           <p class="sidebar-title">React</p>
-          <div class="emotes-container">
-            <button class="emote-btn" data-emote="😀">😀</button>
-            <button class="emote-btn" data-emote="🔥">🔥</button>
-            <button class="emote-btn" data-emote="😮">😮</button>
-            <button class="emote-btn" data-emote="😢">😢</button>
-            <button class="emote-btn" data-emote="👑">👑</button>
+          <div class="reactions-grid-premium">
+            <button class="emote-btn-premium" data-emote="😀">😀</button>
+            <button class="emote-btn-premium" data-emote="👍">👍</button>
+            <button class="emote-btn-premium" data-emote="😂">😂</button>
+            <button class="emote-btn-premium" data-emote="😲">😲</button>
+            <button class="emote-btn-premium" data-emote="👑">👑</button>
           </div>
         </div>
+      </div>
 
-        <!-- Activity Log -->
-        <div class="sidebar-card">
-          <p class="sidebar-title">Activity Log</p>
-          <div class="log-container" id="game-log"></div>
-        </div>
-
-        <!-- In-Game Chat -->
-        <div class="sidebar-card">
-          <p class="sidebar-title">💬 Chat</p>
-          <div class="chat-messages" id="game-chat-messages"></div>
-          <div class="chat-input-row">
-            <input type="text" id="game-chat-input" class="chat-input" placeholder="Say something..." maxlength="200" autocomplete="off">
-            <button class="chat-send-btn" id="game-chat-send">➔</button>
-          </div>
-        </div>
-
-      </div><!-- /game-sidebar -->
-    </div><!-- /game-grid -->
-  </div><!-- /game-screen -->
+    </div><!-- /game-main-layout -->
 </div><!-- /container -->
+
+
+
+<!-- =================== CREATE ROOM GAME SETTINGS MODAL =================== -->
+<div id="create-settings-modal" class="modal-overlay hidden">
+  <div class="modal-content modal-wide">
+    <button class="modal-close-btn" id="close-create-settings">✕</button>
+    <h2>⚙️ Game Settings</h2>
+    <p class="modal-subtitle">Configure your room preferences before starting</p>
+    
+    <div class="settings-grid">
+      <div class="settings-section">
+        <h3>Gameplay Rules</h3>
+        
+        <div class="setting-item">
+          <label>Match Type (Rounds)</label>
+          <div class="radio-group match-type-group">
+            <label class="radio-label">
+              <input type="radio" name="matchType" value="1" checked> Best of 1
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="matchType" value="3"> Best of 3
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="matchType" value="5"> Best of 5
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="matchType" value="7"> Best of 7
+            </label>
+          </div>
+          <p class="setting-hint" id="match-type-desc">Best of 1: First player to win 1 round wins the match.</p>
+        </div>
+        
+        <div class="setting-item">
+          <label>Starting Direction</label>
+          <div class="radio-group flex-row">
+            <label class="radio-label">
+              <input type="radio" name="startingDirection" value="1" checked> Clockwise
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="startingDirection" value="-1"> Counter-Clockwise
+            </label>
+          </div>
+        </div>
+        
+        <div class="setting-item">
+          <label for="starting-cards-select">Starting Cards Count</label>
+          <select id="starting-cards-select" class="dropdown-select">
+            <option value="5">5 cards</option>
+            <option value="7" selected>7 cards (Default)</option>
+            <option value="9">9 cards</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="settings-section">
+        <h3>Room Preferences</h3>
+        
+        <div class="setting-item flex-row-justify">
+          <div class="setting-text">
+            <h4>Draw Until Playable</h4>
+            <p>Keep drawing from deck until a playable card is found</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="draw-until-playable-toggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+        
+        <div class="setting-item flex-row-justify">
+          <div class="setting-text">
+            <h4>UNO Challenge</h4>
+            <p>Allow players to challenge others who fail to call UNO</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="uno-challenge-toggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        
+        <div class="setting-item flex-row-justify">
+          <div class="setting-text">
+            <h4>Spectators</h4>
+            <p>Allow other players to join as spectators</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="spectators-toggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+        
+        <div class="setting-item">
+          <label>Room Visibility</label>
+          <div class="radio-group flex-row">
+            <label class="radio-label">
+              <input type="radio" name="roomVisibility" value="private" checked> Private (Default)
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="roomVisibility" value="public"> Public
+            </label>
+          </div>
+        </div>
+        
+        <div class="setting-item flex-row-justify">
+          <div class="setting-text">
+            <h4>Stacking Rule</h4>
+            <p>Stack +2 cards</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="create-stacking-toggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-item flex-row-justify">
+          <div class="setting-text">
+            <h4>Jump-in Rule</h4>
+            <p>Play identical cards out of turn</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="create-jumpin-toggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal-footer flex-row-justify">
+      <button class="btn btn-secondary" id="btn-cancel-create">Cancel</button>
+      <button class="btn btn-primary" id="btn-confirm-create">Create Room</button>
+    </div>
+  </div>
+</div>
 
 <!-- =================== WILD COLOR PICKER MODAL =================== -->
 <div id="wild-modal" class="modal-overlay hidden">
@@ -559,13 +746,41 @@
   </div>
 </div>
 
+<!-- =================== ROUND OVERLAY (SCOREBOARD) =================== -->
+<div id="round-overlay" class="modal-overlay hidden">
+  <div class="modal-content">
+    <div class="round-ended-banner">🏁 Round Over!</div>
+    <h2 id="round-winner-text">Someone won the round!</h2>
+    
+    <div class="scoreboard-container">
+      <h3>Match Scoreboard</h3>
+      <div id="round-scoreboard-list" class="scoreboard-list">
+        <!-- Dynamically populated -->
+      </div>
+    </div>
+    
+    <p class="waiting-msg">Starting next round automatically in <span id="round-countdown">6</span>s...</p>
+  </div>
+</div>
+
 <!-- =================== GAME OVER MODAL =================== -->
 <div id="game-over-modal" class="modal-overlay hidden">
-  <div class="modal-content">
+  <div class="modal-content modal-wide game-over-content">
     <div class="trophy-icon">🏆</div>
-    <h2>Game Over!</h2>
-    <p id="winner-announcement" class="winner-text">Someone won!</p>
-    <button class="btn btn-primary hidden" id="btn-restart">Play Again</button>
+    <h2 class="winner-title">Match Completed!</h2>
+    <h1 id="winner-announcement" class="winner-text">Someone won!</h1>
+    
+    <div class="match-statistics">
+      <h3>Match Statistics</h3>
+      <div class="stats-grid" id="match-stats-grid">
+        <!-- Dynamically populated stats -->
+      </div>
+    </div>
+    
+    <div class="modal-footer flex-row-justify" style="margin-top:1.5rem;">
+      <button class="btn btn-secondary" id="btn-return-home">Return Home</button>
+      <button class="btn btn-primary hidden" id="btn-restart">Play Again</button>
+    </div>
     <p id="restart-waiting-msg" class="waiting-msg">Waiting for host to restart...</p>
   </div>
 </div>
