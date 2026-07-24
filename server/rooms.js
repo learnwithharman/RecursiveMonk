@@ -9,7 +9,7 @@ function generateRoomCode() {
   return rooms.has(code) ? generateRoomCode() : code;
 }
 
-function createRoom(hostSocketId, playerName) {
+function createRoom(hostSocketId, playerName, settings = {}) {
   const code = generateRoomCode();
   const playerId = "p_" + Math.random().toString(36).substr(2, 9);
   const room = {
@@ -17,7 +17,21 @@ function createRoom(hostSocketId, playerName) {
     hostId: hostSocketId,
     status: "waiting",
     players: [{ id: hostSocketId, playerId, name: playerName, disconnected: false, avatar: "👤", color: "#e2e8f0" }],
-    settings: { stacking: false, jumpIn: false }
+    settings: {
+      matchType: settings.matchType || 1, // Best of 1, 3, 5, 7
+      startingDirection: settings.startingDirection !== undefined ? settings.startingDirection : 1, // 1: CW, -1: CCW
+      startingCards: settings.startingCards || 7, // 5, 7, 9
+      drawUntilPlayable: settings.drawUntilPlayable !== undefined ? !!settings.drawUntilPlayable : false,
+      unoChallenge: settings.unoChallenge !== undefined ? !!settings.unoChallenge : true,
+      spectators: settings.spectators !== undefined ? !!settings.spectators : false,
+      roomVisibility: settings.roomVisibility || "private", // public, private
+      stacking: settings.stacking !== undefined ? !!settings.stacking : false,
+      jumpIn: settings.jumpIn !== undefined ? !!settings.jumpIn : false
+    },
+    scores: { [playerId]: 0 },
+    roundsPlayed: 0,
+    roundWinner: null,
+    matchWinner: null
   };
   rooms.set(code, room);
   return room;
@@ -33,6 +47,10 @@ function joinRoom(code, socketId, playerName) {
   const playerId = "p_" + Math.random().toString(36).substr(2, 9);
   const player = { id: socketId, playerId, name: playerName, disconnected: false, avatar: "👤", color: "#e2e8f0" };
   room.players.push(player);
+  
+  if (!room.scores) room.scores = {};
+  room.scores[playerId] = 0;
+
   return { room, player };
 }
 
@@ -41,6 +59,7 @@ function leaveRoom(socketId) {
     const index = room.players.findIndex((p) => p.id === socketId);
     if (index === -1) continue;
 
+    const player = room.players[index];
     room.players.splice(index, 1);
 
     if (room.players.length === 0) {
@@ -96,7 +115,11 @@ function getPublicRoom(room) {
       avatar: p.avatar || "👤",
       color: p.color || "#e2e8f0"
     })),
-    settings: room.settings || { stacking: false, jumpIn: false }
+    settings: room.settings || { stacking: false, jumpIn: false },
+    scores: room.scores || {},
+    roundsPlayed: room.roundsPlayed || 0,
+    roundWinner: room.roundWinner || null,
+    matchWinner: room.matchWinner || null
   };
 }
 
