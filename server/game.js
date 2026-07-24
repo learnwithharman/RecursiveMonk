@@ -70,12 +70,97 @@ function pushLog(room, entry) {
   if (room.game.logs.length > 15) room.game.logs.shift();
 }
 
+function initStats(room) {
+  if (!room.game) return;
+  room.game.stats = {
+    cardsPlayed: {},
+    cardsDrawn: {},
+    unoCalls: {},
+    unoChallenges: {},
+    turnCounts: {},
+    turnDurations: {}
+  };
+  room.players.forEach(p => {
+    room.game.stats.cardsPlayed[p.id] = 0;
+    room.game.stats.cardsDrawn[p.id] = 0;
+    room.game.stats.unoCalls[p.id] = 0;
+    room.game.stats.unoChallenges[p.id] = 0;
+    room.game.stats.turnCounts[p.id] = 0;
+    room.game.stats.turnDurations[p.id] = 0;
+  });
+}
+
+function trackTurnStart(room) {
+  if (!room.game) return;
+  room.game.turnStartedAt = Date.now();
+}
+
+function trackTurnEnd(room, playerId) {
+  if (!room.game || !room.game.turnStartedAt) return;
+  const duration = Date.now() - room.game.turnStartedAt;
+  if (!room.game.stats) initStats(room);
+
+  room.game.stats.turnCounts[playerId] = (room.game.stats.turnCounts[playerId] || 0) + 1;
+  room.game.stats.turnDurations[playerId] = (room.game.stats.turnDurations[playerId] || 0) + duration;
+  room.game.turnStartedAt = Date.now();
+}
+
 function checkWin(room, playerId) {
   const hand = room.game.hands[playerId];
   if (hand && hand.length === 0) {
     const winner = room.players.find((p) => p.id === playerId);
-    room.game.winner = winner ? winner.name : "Unknown";
-    room.status = "finished";
+    const winnerName = winner ? winner.name : "Unknown";
+    const winnerPlayerId = winner ? winner.playerId : "";
+
+    room.roundWinner = winnerName;
+    room.roundsPlayed += 1;
+
+    // Track round wins (using persistent playerIds)
+    if (!room.scores) room.scores = {};
+    room.players.forEach(p => {
+      if (room.scores[p.playerId] === undefined) room.scores[p.playerId] = 0;
+    });
+
+    if (winnerPlayerId) {
+      room.scores[winnerPlayerId] = (room.scores[winnerPlayerId] || 0) + 1;
+    }
+
+    const matchType = (room.settings && room.settings.matchType) || 1;
+    const targetWins = Math.ceil(matchType / 2);
+
+    const winnerScore = winnerPlayerId ? room.scores[winnerPlayerId] : 0;
+    
+    // Copy stats to a displayable map using names for display
+    const finalStats = {
+      cardsPlayed: {},
+      cardsDrawn: {},
+      unoCalls: {},
+      unoChallenges: {},
+      averageTurnTime: {}
+    };
+    
+    room.players.forEach(p => {
+      const pName = p.name;
+      finalStats.cardsPlayed[pName] = (room.game.stats && room.game.stats.cardsPlayed[p.id]) || 0;
+      finalStats.cardsDrawn[pName] = (room.game.stats && room.game.stats.cardsDrawn[p.id]) || 0;
+      finalStats.unoCalls[pName] = (room.game.stats && room.game.stats.unoCalls[p.id]) || 0;
+      finalStats.unoChallenges[pName] = (room.game.stats && room.game.stats.unoChallenges[p.id]) || 0;
+      
+      const dur = (room.game.stats && room.game.stats.turnDurations[p.id]) || 0;
+      const cnt = (room.game.stats && room.game.stats.turnCounts[p.id]) || 1;
+      finalStats.averageTurnTime[pName] = Math.round((dur / cnt) / 1000 * 10) / 10;
+    });
+
+    room.roundStats = finalStats;
+
+    if (winnerScore >= targetWins) {
+      room.game.winner = winnerName;
+      room.matchWinner = winnerName;
+      room.status = "finished";
+      room.matchStats = finalStats;
+    } else {
+      room.status = "round-ended";
+    }
     return true;
   }
   return false;
@@ -101,14 +186,19 @@ function drawFromDeck(room, count) {
 
 function startGame(room) {
   const deck = shuffle(createDeck());
-  const { hands, drawPile, discardPile } = dealCards(deck, room.players.length);
+  const startingCards = (room.settings && room.settings.startingCards) || 7;
+  const startingDirection = (room.settings && room.settings.startingDirection) !== undefined ? room.settings.startingDirection : 1;
+
+  const { hands, drawPile, discardPile } = dealCards(deck, room.players.length, startingCards);
 
   room.status = "playing";
+  room.roundWinner = null;
+  
   room.game = {
     drawPile,
     discardPile,
     currentTurn: 0,
-    direction: 1,
+    direction: startingDirection,
     hands: {},
     logs: [],
     pendingWild: null,   // { cardIndex, playerId } while awaiting color choice
@@ -116,6 +206,8 @@ function startGame(room) {
     winner: null,
     stackCount: 0,
   };
+
+  initStats(room);
 
   room.players.forEach((player, index) => {
     room.game.hands[player.id] = hands[index];
@@ -152,6 +244,8 @@ function startGame(room) {
     pushLog(room, { type: "start", card: topCard });
   }
 
+  trackTurnStart(room);
+
   return room;
 }
 
@@ -159,6 +253,16 @@ function resetGame(room, hostId) {
   if (room.hostId !== hostId) return { error: "Only the host can restart" };
   room.status = "waiting";
   room.game = null;
+  room.roundsPlayed = 0;
+  room.roundWinner = null;
+  room.matchWinner = null;
+  room.matchStats = null;
+  room.roundStats = null;
+  if (room.scores) {
+    Object.keys(room.scores).forEach(k => {
+      room.scores[k] = 0;
+    });
+  }
   return { success: true };
 }
 
@@ -177,11 +281,12 @@ function getPublicGameState(room) {
     hostId: room.hostId,
     topCard,
     currentTurn: room.game.currentTurn,
-    currentPlayerId: currentPlayer.id,
-    currentPlayerName: currentPlayer.name,
+    currentPlayerId: currentPlayer ? currentPlayer.id : null,
+    currentPlayerName: currentPlayer ? currentPlayer.name : "",
     direction: room.game.direction,
     players: room.players.map((p) => ({
       id: p.id,
+      playerId: p.playerId,
       name: p.name,
       cardCount: room.game.hands[p.id] ? room.game.hands[p.id].length : 0,
       calledUno: !!room.game.unoCalled[p.id],
@@ -196,6 +301,13 @@ function getPublicGameState(room) {
     winner: room.game.winner || null,
     settings: room.settings || { stacking: false, jumpIn: false },
     stackCount: room.game.stackCount || 0,
+    drawPileCount: room.game.drawPile ? room.game.drawPile.length : 0,
+    scores: room.scores || {},
+    roundsPlayed: room.roundsPlayed || 0,
+    roundWinner: room.roundWinner || null,
+    matchWinner: room.matchWinner || null,
+    matchStats: room.matchStats || null,
+    roundStats: room.roundStats || null
   };
 }
 
@@ -247,6 +359,10 @@ function playCard(room, playerId, cardIndex) {
   if (!isColorMatch && !isValueMatch && !isWild) {
     return { error: "Card does not match top card color or value" };
   }
+
+  // Track stats
+  if (!room.game.stats) initStats(room);
+  room.game.stats.cardsPlayed[playerId] = (room.game.stats.cardsPlayed[playerId] || 0) + 1;
 
   // Remove card from hand
   hand.splice(cardIndex, 1);
@@ -306,6 +422,10 @@ function playCard(room, playerId, cardIndex) {
       const drawnCards = drawFromDeck(room, 2);
       room.game.hands[targetPlayer.id].push(...drawnCards);
       actionLog = { type: "draw2", player: room.players[room.game.currentTurn].name, target: targetPlayer.name, count: drawnCards.length, card, jumpIn: isJumpIn };
+      
+      // Track cards drawn stat for target
+      room.game.stats.cardsDrawn[targetPlayer.id] = (room.game.stats.cardsDrawn[targetPlayer.id] || 0) + drawnCards.length;
+
       advanceTurn(room, 2);
     }
 
@@ -315,6 +435,9 @@ function playCard(room, playerId, cardIndex) {
   }
 
   pushLog(room, actionLog);
+
+  // Track turn end for active player
+  trackTurnEnd(room, playerId);
 
   // Check win
   if (checkWin(room, playerId)) {
@@ -340,11 +463,19 @@ function chooseColor(room, playerId, color) {
 
   let actionLog = null;
 
+  // Track card play statistics
+  if (!room.game.stats) initStats(room);
+  room.game.stats.cardsPlayed[playerId] = (room.game.stats.cardsPlayed[playerId] || 0) + 1;
+
   if (cardValue === "wild4") {
     const targetIdx = safeMod(room.game.currentTurn + room.game.direction, playerCount);
     const targetPlayer = room.players[targetIdx];
     const drawnCards = drawFromDeck(room, 4);
     room.game.hands[targetPlayer.id].push(...drawnCards);
+    
+    // Track stats
+    room.game.stats.cardsDrawn[targetPlayer.id] = (room.game.stats.cardsDrawn[targetPlayer.id] || 0) + drawnCards.length;
+
     actionLog = {
       type: "wild4",
       player: activePlayer.name,
@@ -360,6 +491,9 @@ function chooseColor(room, playerId, color) {
   }
 
   pushLog(room, actionLog);
+
+  // Track turn end
+  trackTurnEnd(room, playerId);
 
   // Check win (player could have emptied hand with the wild)
   if (checkWin(room, playerId)) {
@@ -378,6 +512,9 @@ function callUno(room, playerId) {
   const player = room.players.find((p) => p.id === playerId);
   pushLog(room, { type: "uno-call", player: player ? player.name : "Someone" });
 
+  if (!room.game.stats) initStats(room);
+  room.game.stats.unoCalls[playerId] = (room.game.stats.unoCalls[playerId] || 0) + 1;
+
   return { success: true };
 }
 
@@ -393,6 +530,10 @@ function challengeUno(room, challengerId) {
 
   const drawn = drawFromDeck(room, 2);
   room.game.hands[target.id].push(...drawn);
+
+  if (!room.game.stats) initStats(room);
+  room.game.stats.cardsDrawn[target.id] = (room.game.stats.cardsDrawn[target.id] || 0) + drawn.length;
+  room.game.stats.unoChallenges[challengerId] = (room.game.stats.unoChallenges[challengerId] || 0) + 1;
 
   const challenger = room.players.find((p) => p.id === challengerId);
   pushLog(room, {
@@ -413,29 +554,103 @@ function drawCard(room, playerId) {
   if (activePlayer.id !== playerId) return { error: "It is not your turn" };
 
   const isStackActive = room.game.stackCount && room.game.stackCount > 0;
-  const drawCount = isStackActive ? room.game.stackCount : 1;
+  
+  if (!room.game.stats) initStats(room);
 
-  const drawn = drawFromDeck(room, drawCount);
-  if (drawn.length === 0) return { error: "No cards left in the deck to draw" };
-
-  room.game.hands[playerId].push(...drawn);
-
-  // Drawing cancels any un-called UNO status
-  delete room.game.unoCalled[playerId];
-
-  let actionLog;
   if (isStackActive) {
-    actionLog = { type: "draw2-penalty", player: activePlayer.name, count: drawn.length };
+    const drawCount = room.game.stackCount;
+    const drawn = drawFromDeck(room, drawCount);
+    if (drawn.length === 0) return { error: "No cards left in the deck to draw" };
+    
+    room.game.hands[playerId].push(...drawn);
+    delete room.game.unoCalled[playerId];
+
+    room.game.stats.cardsDrawn[playerId] = (room.game.stats.cardsDrawn[playerId] || 0) + drawn.length;
+
+    const actionLog = { type: "draw2-penalty", player: activePlayer.name, count: drawn.length };
+    pushLog(room, actionLog);
     room.game.stackCount = 0;
-  } else {
-    actionLog = { type: "draw", player: activePlayer.name };
+    
+    advanceTurn(room, 1);
+    trackTurnEnd(room, playerId);
+
+    return { success: true, card: drawn[0], log: actionLog };
   }
 
+  // Draw Until Playable Check
+  const drawUntilPlayable = room.settings && room.settings.drawUntilPlayable;
+  const topCard = room.game.discardPile[room.game.discardPile.length - 1];
+  const activeColor = topCard.activeColor || topCard.color;
+
+  function isPlayable(card) {
+    return card.color === "wild" || card.color === activeColor || card.value === topCard.value;
+  }
+
+  const drawnCards = [];
+  let foundPlayable = false;
+
+  if (drawUntilPlayable) {
+    while (true) {
+      const drawn = drawFromDeck(room, 1);
+      if (drawn.length === 0) break;
+      const card = drawn[0];
+      drawnCards.push(card);
+      if (isPlayable(card)) {
+        foundPlayable = true;
+        break;
+      }
+    }
+  } else {
+    const drawn = drawFromDeck(room, 1);
+    if (drawn.length > 0) {
+      drawnCards.push(drawn[0]);
+      if (isPlayable(drawn[0])) {
+        foundPlayable = true;
+      }
+    }
+  }
+
+  if (drawnCards.length === 0) {
+    return { error: "No cards left in the deck to draw" };
+  }
+
+  room.game.hands[playerId].push(...drawnCards);
+  delete room.game.unoCalled[playerId];
+
+  room.game.stats.cardsDrawn[playerId] = (room.game.stats.cardsDrawn[playerId] || 0) + drawnCards.length;
+
+  const actionLog = {
+    type: "draw",
+    player: activePlayer.name,
+    count: drawnCards.length,
+    drawnPlayable: foundPlayable
+  };
+  pushLog(room, actionLog);
+
+  if (drawUntilPlayable && foundPlayable) {
+    // Let player decide to play or pass, don't advance turn automatically.
+  } else {
+    advanceTurn(room, 1);
+    trackTurnEnd(room, playerId);
+  }
+
+  return { success: true, card: drawnCards[0], log: actionLog };
+}
+
+function passTurn(room, playerId) {
+  if (room.status !== "playing") return { error: "Game not active" };
+  if (room.game.pendingWild) return { error: "Waiting for color choice" };
+
+  const activePlayer = room.players[room.game.currentTurn];
+  if (activePlayer.id !== playerId) return { error: "It is not your turn" };
+
+  const actionLog = { type: "pass", player: activePlayer.name };
   pushLog(room, actionLog);
 
   advanceTurn(room, 1);
+  trackTurnEnd(room, playerId);
 
-  return { success: true, card: drawn[0], log: actionLog };
+  return { success: true, log: actionLog };
 }
 
 module.exports = {
@@ -448,4 +663,5 @@ module.exports = {
   callUno,
   challengeUno,
   drawCard,
+  passTurn,
 };
